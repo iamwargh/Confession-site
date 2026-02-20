@@ -1,0 +1,56 @@
+========================================
+   CONFESSION SITE — PROJECT TODO LIST
+========================================
+
+PHASE 1 — PLAN & SETUP [X]
+-----------------------
+[X] Tech stack decide kar (Frontend + Backend + Database)
+[X] Domain name soch aur buy kar
+[X] Database schema design kar (users, confessions, reports)
+[X] GitHub repo banao aur project structure set karo
+
+
+PHASE 2 — AUTH SYSTEM [X]
+----------------------
+[X] Email + Password signup page
+[X] Login page
+[X] Password hashing (managed by Supabase Auth)
+[X] Email verification link (configured in Supabase)
+[X] Forgot password flow
+
+
+PHASE 3 — CORE FEATURE (Confessions) [X]
+--------------------------------------
+[X] Confession post karne ka form (text only, 1000 char limit)
+[X] Home feed — latest confessions dikhao
+[X] Anonymous display — sirf "Anonymous" dikhao front pe
+[X] Single confession detail page
+[X] Upvote / like button
+[X] My confessions page
+[X] Delete apna confession
+
+
+PHASE 4 — MODERATION [X]
+---------------------------------------
+[X] Report button har confession pe
+[X] Admin panel — reported posts dekho aur delete karo
+[X] Basic bad word / keyword filter
+[X] Rate limiting — max 5 confessions per day per user
+[X] Mental health warning jab dark keywords detect ho
+
+
+PHASE 5 — LEGAL & PRIVACY [X]
+---------------------------
+[X] Privacy Policy page
+[X] Terms of Service page
+[X] Account delete option (user data purge)
+
+
+PHASE 6 — LAUNCH [ ]
+-----------------
+[ ] Deploy karo (Vercel / Railway / Render)
+[ ] HTTPS / SSL set karo
+[ ] Mobile responsive check karo
+[ ] Pehle 50 users manually lao (Reddit / friends)
+
+========================================

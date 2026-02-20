@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-outfit);
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+
+    to {
+      height: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-heart {
+
+    0%,
+    100% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(1.15);
+    }
+  }
+}
+
+/* ============================================================
+   LIGHT MODE — "Truth of Your Heart" Rose Theme
+   Warm cream background, deep rose accents
+   ============================================================ */
+@layer base {
+  :root {
+    /* Backgrounds */
+    --background: 350 30% 98%;
+    /* Warm near-white */
+    --foreground: 340 15% 10%;
+    /* Deep charcoal-rose */
+
+    /* Cards */
+    --card: 0 0% 100%;
+    --card-foreground: 340 15% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 340 15% 10%;
+
+    /* Primary — Deep Rose */
+    --primary: 346 77% 50%;
+    /* #E11D48 rose-600 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 350 40% 94%;
+    /* Soft blush */
+    --secondary-foreground: 340 15% 15%;
+
+    /* Muted */
+    --muted: 350 25% 93%;
+    --muted-foreground: 340 10% 48%;
+
+    /* Accent */
+    --accent: 350 100% 96%;
+    /* Very light rose tint */
+    --accent-foreground: 346 77% 45%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Borders / Inputs */
+    --border: 350 30% 88%;
+    --input: 350 30% 88%;
+    --ring: 346 77% 50%;
+
+    --radius: 0.625rem;
+  }
+
+  /* ============================================================
+     DARK MODE — Charcoal night with rose-crimson glow
+     ============================================================ */
+  .dark {
+    /* Backgrounds */
+    --background: 240 6% 8%;
+    /* Deep charcoal */
+    --foreground: 0 0% 95%;
+
+    /* Cards */
+    --card: 240 6% 11%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 240 6% 11%;
+    --popover-foreground: 0 0% 95%;
+
+    /* Primary — Crimson rose (slightly brighter for dark mode) */
+    --primary: 346 85% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 240 5% 18%;
+    --secondary-foreground: 0 0% 90%;
+
+    /* Muted */
+    --muted: 240 5% 18%;
+    --muted-foreground: 240 5% 55%;
+
+    /* Accent */
+    --accent: 346 40% 18%;
+    /* Dark rose tint */
+    --accent-foreground: 346 85% 70%;
+
+    /* Destructive */
+    --destructive: 0 62% 35%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Borders / Inputs */
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+    --ring: 346 85% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Fade in animation for page loads */
+  main {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  /* Custom scrollbar for dark mode */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.5);
+  }
+}

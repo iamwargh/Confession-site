@@ -1,0 +1,279 @@
+================================================================
+   AI TASKS — CONFESSION SITE PROJECT
+   (What AI Can Do For You + Best AI For Each Task)
+================================================================
+
+YOUR AI MODELS:
+  🔴 Gemini 3 Power        — Fast, good for UI/boilerplate/bulk code
+  🟣 Claude Sonnet 4.6      — Balanced, great for logic + clean code
+  🟠 Claude Opus 4.6        — Deep thinker, best for architecture/complex logic
+  🔵 GPT-OSS 120B           — Good for general coding + explanations
+  🟢 Sonnet Think 4.6       — Best for debugging, reasoning, tricky bugs
+
+
+================================================================
+PHASE 1 — PROJECT SETUP & BOILERPLATE
+================================================================
+
+[AI-1] Next.js project initialization + Tailwind CSS setup
+        → Best AI: 🔴 Gemini 3 Power (fast boilerplate generation)
+        → Prompt: "Create a Next.js 14 app with Tailwind CSS, 
+           app router, and folder structure for a confession site"
+
+[AI-2] Supabase project setup — generate all SQL for tables
+        → Best AI: 🟠 Claude Opus 4.6 (best for schema + RLS logic)
+        → Tables: users, confessions, reports, likes, admin_actions
+        → Include: RLS policies, indexes, triggers
+        → Prompt: "Generate complete Supabase SQL for these tables 
+           with full RLS policies: [paste DB schema from plan]"
+
+[AI-3] Project folder structure creation
+        → Best AI: 🔴 Gemini 3 Power
+        → /app, /components, /lib, /utils, /styles etc.
+
+[AI-4] Supabase client setup (supabaseClient.js)
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Server + client side Supabase initialization
+
+
+================================================================
+PHASE 2 — AUTH SYSTEM (Full Pages + Logic)
+================================================================
+
+[AI-5] Signup page — UI + form validation + Supabase auth call
+        → Best AI: 🟣 Claude Sonnet 4.6 (clean form logic)
+        → Email + Password + Username (unique check)
+        → Character limit validations
+
+[AI-6] Login page — UI + auth logic + error handling
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Suspended user check + appropriate error messages
+
+[AI-7] Email verification page
+        → Best AI: 🔴 Gemini 3 Power (simple page)
+        → Supabase handles the email, just need the callback page
+
+[AI-8] Forgot password / Reset password flow
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Send reset link + new password form
+
+[AI-9] Auth middleware — protect routes based on role
+        → Best AI: 🟠 Claude Opus 4.6 (security-critical logic)
+        → Check: logged in? verified? suspended? role?
+        → Redirect accordingly
+
+[AI-10] Account delete page + backend logic
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Confirmation modal + data purge from Supabase
+
+
+================================================================
+PHASE 3 — CORE FEATURES (Confessions)
+================================================================
+
+[AI-11] Confession post form — UI + validation + submit
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Text only, 1000 char limit, character counter
+        → Rate limit check (max 5/day) before submit
+
+[AI-12] Home feed page — latest confessions with infinite scroll
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Pagination / infinite scroll
+        → Each card: content preview, like count, report btn
+        → All show "Anonymous"
+
+[AI-13] Trending feed page — most liked confessions
+        → Best AI: 🔴 Gemini 3 Power (similar to home feed)
+        → Sort by likes_count descending
+
+[AI-14] Single confession detail page (/confession/[id])
+        → Best AI: 🔴 Gemini 3 Power
+        → Full text, like button, report button
+
+[AI-15] Like/Unlike system — toggle + optimistic UI update
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Insert/delete from likes table
+        → Update likes_count in confessions table
+        → Prevent duplicate likes
+
+[AI-16] Report system — report button + reason form
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Modal: select reason + optional text
+        → Insert into reports table
+
+[AI-17] My Confessions page
+        → Best AI: 🔴 Gemini 3 Power (straightforward query)
+        → List user's own confessions + delete button
+
+[AI-18] Delete own confession
+        → Best AI: 🔴 Gemini 3 Power
+        → Soft delete (is_deleted = true) or hard delete
+
+
+================================================================
+PHASE 4 — MODERATION SYSTEM
+================================================================
+
+[AI-19] Keyword filter — block extreme words before posting
+        → Best AI: 🟠 Claude Opus 4.6 (sensitive content logic)
+        → Maintain a word list
+        → Check content before insert
+        → Return error if blocked word found
+
+[AI-20] Rate limiting — max 5 posts per day per user
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Query count of user's posts today
+        → Block if >= 5
+
+[AI-21] Mental health warning system
+        → Best AI: 🟠 Claude Opus 4.6 (sensitive, needs careful handling)
+        → Detect dark keywords in confession text
+        → Show helpline banner automatically
+        → Include India helpline numbers (iCall, Vandrevala, etc.)
+
+
+================================================================
+PHASE 5 — ADMIN PANEL
+================================================================
+
+[AI-22] Admin dashboard page
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Stats: total reports (pending/resolved)
+        → Recent reported posts list
+        → Locked accounts list
+        → Quick action buttons
+
+[AI-23] Admin reports queue page
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → List all pending reports
+        → Each report: confession text, reason, reporter
+        → Actions: approve (dismiss) / delete post / lock user
+
+[AI-24] Admin user lock system
+        → Best AI: 🟠 Claude Opus 4.6 (needs careful logic)
+        → Lock user for 1d / 3d / 7d
+        → Update is_suspended + suspended_until in DB
+        → Locked user sees message on login attempt
+
+
+================================================================
+PHASE 6 — SUPER ADMIN PANEL
+================================================================
+
+[AI-25] Super Admin dashboard — full stats
+        → Best AI: 🟠 Claude Opus 4.6 (complex dashboard)
+        → Total users (today/week/total)
+        → Total confessions (today/week/total)
+        → Total reports (pending/resolved)
+        → Total admins list
+        → Suspended/banned accounts
+        → Recent signups + recent posts
+
+[AI-26] Full user table — search, filter, detail view
+        → Best AI: 🟠 Claude Opus 4.6
+        → Search by email or username
+        → User detail: email, username, hash, role, activity
+        → Actions: suspend, ban, delete, promote/demote
+
+[AI-27] Promote / Demote admin system
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Change role: user ↔ admin
+        → Only Super Admin can do this
+
+[AI-28] Suspend / Ban / Delete account system
+        → Best AI: 🟠 Claude Opus 4.6 (critical security logic)
+        → Suspend: 1d / 1w / 1m / permanent
+        → Ban: permanent suspension
+        → Delete: full data purge
+
+[AI-29] Activity log page
+        → Best AI: 🟣 Claude Sonnet 4.6
+        → Show: which admin did what action, when, to whom
+        → Log every admin action in admin_actions table
+
+[AI-30] Super Admin post management
+        → Best AI: 🔴 Gemini 3 Power
+        → List all posts, search, delete any post
+
+
+================================================================
+PHASE 7 — LEGAL PAGES
+================================================================
+
+[AI-31] Privacy Policy page
+        → Best AI: 🔵 GPT-OSS 120B (best for legal text generation)
+        → Generate a proper privacy policy for anonymous 
+           confession site
+        → Cover: data collection, anonymity, cookies, etc.
+
+[AI-32] Terms of Service page
+        → Best AI: 🔵 GPT-OSS 120B
+        → Cover: acceptable use, prohibited content, 
+           account termination, liability
+
+
+================================================================
+PHASE 8 — UI/UX POLISH
+================================================================
+
+[AI-33] Global layout — navbar, footer, responsive design
+        → Best AI: 🔴 Gemini 3 Power (fast UI work)
+        → Dark mode support
+        → Mobile responsive
+
+[AI-34] Loading states, error states, empty states
+        → Best AI: 🔴 Gemini 3 Power
+        → Skeleton loaders, error messages, "no data" views
+
+[AI-35] Toast notifications system
+        → Best AI: 🔴 Gemini 3 Power
+        → Success/error/warning toasts
+
+[AI-36] 404 page + error boundary
+        → Best AI: 🔴 Gemini 3 Power
+
+
+================================================================
+PHASE 9 — SECURITY & OPTIMIZATION
+================================================================
+
+[AI-37] Supabase RLS policies — write + review
+        → Best AI: 🟠 Claude Opus 4.6 (security-critical)
+        → Row Level Security for every table
+        → Test each policy
+
+[AI-38] Middleware for route protection
+        → Best AI: 🟠 Claude Opus 4.6
+        → Protect admin/superadmin routes
+        → Check suspended status on every request
+
+[AI-39] Input sanitization — prevent XSS
+        → Best AI: 🟢 Sonnet Think 4.6 (good at finding edge cases)
+        → Sanitize all user inputs before display
+
+
+================================================================
+PHASE 10 — DEBUGGING & TESTING
+================================================================
+
+[AI-40] Debug any issues during development
+        → Best AI: 🟢 Sonnet Think 4.6 (best debugger)
+        → Use this for ANY bug you encounter
+
+[AI-41] Code review — review completed code for issues
+        → Best AI: 🟢 Sonnet Think 4.6
+        → Find security holes, logic errors, edge cases
+
+
+================================================================
+TOTAL AI TASKS: 41
+================================================================
+
+RECOMMENDED WORKFLOW:
+  1. Use Opus 4.6 for architecture decisions + DB schema + security
+  2. Use Sonnet 4.6 for most feature development (clean, reliable)
+  3. Use Gemini 3 Power for UI pages + boilerplate (fast)
+  4. Use GPT-OSS 120B for legal text + documentation
+  5. Use Sonnet Think 4.6 for debugging + code review
+
+================================================================

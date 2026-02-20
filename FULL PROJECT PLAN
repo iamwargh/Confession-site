@@ -1,0 +1,280 @@
+========================================
+    CONFESSION WEBSITE — FULL PROJECT PLAN
+         (Updated & Final Version)
+========================================
+
+WHAT AM I BUILDING?
+--------------------
+Ek anonymous confession website jahan log apne raaz,
+feelings, aur confessions share kar sakte hain.
+Reddit style auth — email + password + username.
+Posts pe sirf "Anonymous" dikhega.
+Text only — koi photo upload nahi.
+Simple aur clean UI — Tailwind CSS.
+3 roles hain — User, Admin, Super Admin.
+
+
+========================================
+TECH STACK (Final)
+========================================
+
+Frontend  : Next.js + Tailwind CSS
+Database  : Supabase (PostgreSQL)
+Auth      : Supabase Auth (built-in)
+Hosting   : Vercel
+Email     : Supabase built-in (verification)
+
+
+========================================
+ROLES SYSTEM
+========================================
+
+3 types ke users hain :
+
+1. USER (normal)
+2. ADMIN
+3. SUPER ADMIN
+
+
+--- USER KYA KAR SAKTA HAI ---
+- Signup / Login
+- Confession post karna (text only, 1000 chars)
+- Apni posts dekhna
+- Apni post delete karna
+- Kisi bhi post ko like / react karna
+- Kisi bhi post ko report karna
+- Account delete karna
+
+--- ADMIN KYA KAR SAKTA HAI ---
+- Kisi bhi user ki post delete kar sakta hai
+- Kisi bhi user ki ID lock kar sakta hai (1 din se 1 hafta)
+- Reports dekh sakta hai aur unpe action le sakta hai
+- Reported posts approve / delete kar sakta hai
+- (Admin khud kisi ko admin nahi bana sakta)
+
+--- SUPER ADMIN KYA KAR SAKTA HAI ---
+- Sab kuch jo Admin kar sakta hai +
+- Kisi bhi user ki full details dekh sakta hai
+  (email, username, password hash, created_at)
+- Kisi bhi user ka account delete kar sakta hai
+- Kisi bhi user ka account suspend kar sakta hai
+  (temporary ya permanently)
+- Kisi bhi post delete kar sakta hai
+- Kisi ko bhi Admin bana sakta hai
+- Kisi bhi Admin ko hata sakta hai (role wapas User kar sakta hai)
+- Reports dekh sakta hai
+- Super Admin panel mein full dashboard hoga
+
+
+========================================
+DASHBOARDS
+========================================
+
+--- ADMIN DASHBOARD ---
+- Total reports (pending / resolved)
+- Recent reported posts list
+- Locked accounts list
+- Quick action buttons (delete post, lock user)
+
+--- SUPER ADMIN DASHBOARD ---
+- Total users count (aaj / is hafte / total)
+- Total confessions count (aaj / is hafte / total)
+- Total reports count (pending / resolved)
+- Total admins list
+- Suspended / banned accounts list
+- Recent signups
+- Recent posts
+- User search — email ya username se dhundo
+- Full user detail view (email, hash, activity)
+- Promote user to Admin
+- Remove Admin role
+- Suspend account (1 din / 1 hafta / 1 mahina / permanent)
+- Delete account permanently
+- Delete any post
+
+
+========================================
+FEATURES — COMPLETE LIST
+========================================
+
+--- AUTH ---
+- Email + Password signup
+- Username choose karna (unique)
+- Email verification
+- Login / Logout
+- Forgot password / Reset password
+- Account delete
+
+--- CONFESSION ---
+- Confession likhna (text only, max 1000 chars)
+- Home feed — latest confessions
+- Trending feed — most liked
+- Single confession page
+- Like / react button
+- Report button (with reason)
+- My Confessions page
+- Delete apni post
+
+--- MODERATION ---
+- Report system — user post report kare with reason
+- Admin reports queue dekhe
+- Admin post delete kare
+- Admin user ID lock kare (1d / 3d / 7d)
+- Locked user login nahi kar sakta — message dikhega
+- Keyword filter — extreme words auto-block before post
+- Rate limit — max 5 posts per day per user
+- Mental health warning agar dark keywords detect ho
+  (helpline number show hoga automatically)
+
+--- ADMIN PANEL ---
+- Login sirf admin/superadmin ke liye
+- Reports list (pending / resolved)
+- Post delete
+- User lock (duration select)
+- Dashboard stats
+
+--- SUPER ADMIN PANEL ---
+- Sab kuch admin panel ka +
+- Full user table (search, filter)
+- User detail view
+- Promote / Demote admin
+- Suspend / Ban / Delete account
+- Full dashboard with all stats
+- Activity log (kaun sa admin ne kya kiya)
+
+
+========================================
+PAGES LIST
+========================================
+
+PUBLIC PAGES
+- / (Home feed)
+- /trending
+- /confession/[id]
+- /login
+- /signup
+- /privacy-policy
+- /terms-of-service
+
+USER PAGES (login required)
+- /post (confession likhna)
+- /my-confessions
+- /account/settings
+- /account/delete
+
+ADMIN PAGES
+- /admin/dashboard
+- /admin/reports
+- /admin/users (lock only)
+
+SUPER ADMIN PAGES
+- /superadmin/dashboard
+- /superadmin/users (full control)
+- /superadmin/admins (promote / demote)
+- /superadmin/reports
+- /superadmin/posts
+- /superadmin/activity-log
+
+
+========================================
+DATABASE TABLES
+========================================
+
+USERS
+- id
+- email
+- username
+- password_hash
+- role (user / admin / superadmin)
+- is_verified
+- is_suspended
+- suspended_until (null = permanent)
+- suspension_reason
+- created_at
+
+CONFESSIONS
+- id
+- user_id
+- content
+- likes_count
+- is_deleted
+- deleted_by (admin/superadmin id)
+- created_at
+
+REPORTS
+- id
+- confession_id
+- reported_by (user_id)
+- reason
+- status (pending / resolved / dismissed)
+- resolved_by (admin id)
+- created_at
+
+LIKES
+- id
+- confession_id
+- user_id
+- created_at
+
+ADMIN_ACTIONS (activity log)
+- id
+- admin_id
+- action_type (delete_post / lock_user / suspend / promote etc.)
+- target_user_id
+- target_confession_id
+- notes
+- created_at
+
+
+========================================
+SECURITY
+========================================
+
+- Supabase Row Level Security (RLS) ON karna compulsory
+- Admin aur SuperAdmin routes middleware se protect honge
+- Password kabhi plain store nahi hoga (Supabase handle karta hai)
+- HTTPS compulsory (Vercel automatically deta hai)
+- Rate limiting on post creation
+- Suspended user ka token reject hoga middleware mein
+
+
+========================================
+LAUNCH PLAN
+========================================
+
+Step 1 : Supabase project banao — tables + RLS setup
+Step 2 : Next.js project banao — Tailwind setup
+Step 3 : Auth pages banao (signup, login, verify)
+Step 4 : Confession feed + post system
+Step 5 : Report system
+Step 6 : Admin panel
+Step 7 : Super Admin panel
+Step 8 : Keyword filter + mental health warning
+Step 9 : Test sab kuch
+Step 10: Vercel pe deploy karo
+Step 11: Domain lagao
+Step 12: Pehle 50 users lao manually
+
+
+========================================
+KNOWN PROBLEMS TO HANDLE
+========================================
+
+- Empty site problem — shuruat mein khud kuch posts daalo
+- Dark content aayega zaroor — moderation day 1 se ready rakho
+- Supabase free tier pause hota hai inactivity pe
+- Admin activity log rakho — accountability ke liye
+- Mental health content — helpline banner compulsory
+
+
+========================================
+SUMMARY
+========================================
+
+Ek clean, anonymous, text-only confession platform.
+3 role system — User, Admin, Super Admin.
+Super Admin full control rakhta hai platform ka.
+Admin reports handle karta hai aur users lock kar sakta hai.
+Built on Next.js + Tailwind + Supabase + Vercel.
+
+========================================

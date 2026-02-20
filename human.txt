@@ -1,0 +1,280 @@
+================================================================
+   HUMAN TASKS — CONFESSION SITE PROJECT
+   (Only YOU Can Do These — AI Cannot Help Here)
+================================================================
+
+These tasks REQUIRE human action — account creation,
+purchases, decisions, manual testing, and real-world actions.
+AI cannot access your accounts or make decisions for you.
+
+
+================================================================
+PHASE 1 — ACCOUNTS & SETUP (DO FIRST!)
+================================================================
+
+[H-1] ⭐ Create Supabase account + new project
+       → Go to https://supabase.com
+       → Sign up / login
+       → Create new project (choose region: closest to India)
+       → Save: Project URL + Anon Key + Service Role Key
+       → ⏰ Time: 10 minutes
+
+[H-2] ⭐ Create Vercel account (for deployment)
+       → Go to https://vercel.com
+       → Sign up with GitHub
+       → ⏰ Time: 5 minutes
+
+[H-3] ⭐ Create GitHub repository
+       → Go to https://github.com
+       → New repo: "confession-site" (private recommended)
+       → Clone to your local machine
+       → ⏰ Time: 10 minutes
+
+[H-4] Domain name decide karo + purchase
+       → Options: Namecheap, GoDaddy, Cloudflare
+       → Suggested names: confessit.in, confessions.co, etc.
+       → Connect domain to Vercel later
+       → ⏰ Time: 30 minutes (decision + purchase)
+       → 💰 Cost: ₹500-1500/year approx
+
+
+================================================================
+PHASE 2 — ENVIRONMENT SETUP
+================================================================
+
+[H-5] Install Node.js (if not installed)
+       → Download from https://nodejs.org
+       → Use LTS version
+       → Verify: node -v and npm -v in terminal
+       → ⏰ Time: 5 minutes
+
+[H-6] Set up .env.local file with Supabase keys
+       → After AI generates the file template, YOU fill in:
+         NEXT_PUBLIC_SUPABASE_URL=your_url_here
+         NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key_here
+         SUPABASE_SERVICE_ROLE_KEY=your_key_here
+       → ⚠️ NEVER share these keys or push to GitHub
+       → ⏰ Time: 5 minutes
+
+[H-7] Run Supabase SQL in dashboard
+       → After AI generates SQL, go to Supabase Dashboard
+       → SQL Editor → paste SQL → Run
+       → Verify tables are created
+       → ⏰ Time: 15 minutes
+
+
+================================================================
+PHASE 3 — DECISIONS (AI Needs Your Input)
+================================================================
+
+[H-8] Decide site name / brand name
+       → This affects: domain, logo, title tags
+       → Examples: ConfessIt, TheBox, Unheard, Whisper
+       → ⏰ Time: whenever you feel right
+
+[H-9] Decide color scheme / theme
+       → Dark mode primary? Light mode?
+       → Primary accent color?
+       → AI will implement whatever you choose
+       → ⏰ Time: 10 minutes
+
+[H-10] Decide helpline numbers for mental health warning
+       → Suggested India helplines:
+         - iCall: 9152987821
+         - Vandrevala Foundation: 1860-2662-345
+         - AASRA: 9820466726
+       → You confirm which ones to show
+       → ⏰ Time: 5 minutes
+
+[H-11] Decide the bad words / keyword filter list
+       → AI can suggest a starter list
+       → YOU review and finalize
+       → This is sensitive — human judgment needed
+       → ⏰ Time: 20 minutes
+
+[H-12] Decide Super Admin credentials
+       → Which email will be the Super Admin?
+       → You'll sign up normally, then manually set
+         role = 'superadmin' in Supabase dashboard
+       → ⏰ Time: 5 minutes
+
+
+================================================================
+PHASE 4 — SUPABASE DASHBOARD WORK
+================================================================
+
+[H-13] Enable email auth in Supabase
+       → Dashboard → Authentication → Providers
+       → Enable Email provider
+       → Set: Confirm email = ON
+       → ⏰ Time: 5 minutes
+
+[H-14] Configure email templates (optional)
+       → Dashboard → Authentication → Email Templates
+       → Customize verification & reset password emails
+       → ⏰ Time: 15 minutes
+
+[H-15] Set your account as Super Admin
+       → After signing up on your own site:
+       → Go to Supabase → Table Editor → users/profiles
+       → Find your row → change role to 'superadmin'
+       → ⏰ Time: 2 minutes
+
+[H-16] Monitor Supabase free tier usage
+       → Free tier: 500MB DB, 1GB storage, 2GB bandwidth
+       → Check dashboard weekly
+       → Upgrade if needed
+       → ⏰ Time: ongoing
+
+
+================================================================
+PHASE 5 — TESTING (Only Humans Can Test UX)
+================================================================
+
+[H-17] Test full signup → verify email → login flow
+       → Use a real email
+       → Check if verification email arrives
+       → Test login after verification
+       → ⏰ Time: 15 minutes
+
+[H-18] Test confession posting flow
+       → Post a confession
+       → Check it appears in feed
+       → Check it shows "Anonymous"
+       → Try posting more than 5 times in a day
+       → ⏰ Time: 15 minutes
+
+[H-19] Test like / report system
+       → Like a post — check count updates
+       → Unlike — check count decreases
+       → Report a post — check it appears in admin panel
+       → ⏰ Time: 10 minutes
+
+[H-20] Test admin panel with real actions
+       → Login as Admin
+       → View reports, delete a post, lock a user
+       → Verify locked user can't login
+       → ⏰ Time: 20 minutes
+
+[H-21] Test Super Admin panel
+       → Login as Super Admin
+       → Promote a user to Admin
+       → Demote an Admin
+       → Suspend a user, delete an account
+       → Check activity log
+       → ⏰ Time: 30 minutes
+
+[H-22] Mobile responsive testing
+       → Open site on your phone
+       → Test ALL pages on mobile
+       → Report any UI issues to AI for fixing
+       → ⏰ Time: 30 minutes
+
+[H-23] Cross-browser testing
+       → Test on: Chrome, Firefox, Edge (minimum)
+       → Safari if possible
+       → ⏰ Time: 20 minutes
+
+
+================================================================
+PHASE 6 — DEPLOYMENT
+================================================================
+
+[H-24] Deploy to Vercel
+       → Connect GitHub repo to Vercel
+       → Add environment variables in Vercel dashboard
+       → Deploy
+       → ⏰ Time: 15 minutes
+
+[H-25] Connect custom domain
+       → In Vercel dashboard: Settings → Domains
+       → Add your domain
+       → Update DNS records at your domain registrar
+       → Wait for DNS propagation (up to 48hrs)
+       → ⏰ Time: 30 minutes + waiting
+
+[H-26] Verify HTTPS is working
+       → Vercel auto-provides SSL
+       → Just verify https:// works on your domain
+       → ⏰ Time: 2 minutes
+
+
+================================================================
+PHASE 7 — LAUNCH & MARKETING
+================================================================
+
+[H-27] Seed initial confessions
+       → Post 20-30 confessions yourself (from diff accounts)
+       → Makes the site feel alive from day 1
+       → Mix of: funny, emotional, relatable
+       → ⏰ Time: 1 hour
+
+[H-28] Get first 50 users
+       → Share on:
+         - Reddit (r/india, r/confessions, r/indianteenagers)
+         - Instagram stories
+         - WhatsApp groups
+         - College/university groups
+         - Twitter/X
+       → ⏰ Time: ongoing (first 2 weeks critical)
+
+[H-29] Set up moderation schedule
+       → Check reports at least 2x per day
+       → Morning + night minimum
+       → React quickly to dark/harmful content
+       → ⏰ Time: ongoing (15 min/day)
+
+[H-30] Monitor and respond to user feedback
+       → Watch for patterns in reports
+       → Note feature requests
+       → Tell AI what to fix/add
+       → ⏰ Time: ongoing
+
+
+================================================================
+PHASE 8 — LEGAL (Your Responsibility!)
+================================================================
+
+[H-31] Review AI-generated Privacy Policy
+       → AI will generate it, YOU must read and approve
+       → Make sure it accurately describes your data practices
+       → ⚠️ Consider consulting a lawyer if serious
+       → ⏰ Time: 30 minutes
+
+[H-32] Review AI-generated Terms of Service
+       → Same — read, understand, approve
+       → Make sure liability disclaimers are there
+       → ⏰ Time: 30 minutes
+
+[H-33] Ensure DPDP Act compliance (India)
+       → Digital Personal Data Protection Act 2023
+       → Consent for data collection
+       → Right to erasure (account delete feature covers this)
+       → ⏰ Time: research + review
+
+
+================================================================
+TOTAL HUMAN TASKS: 33
+================================================================
+
+PRIORITY ORDER (Do These First!):
+  ────────────────────────────────────
+  1. H-1  → Create Supabase account
+  2. H-2  → Create Vercel account
+  3. H-3  → Create GitHub repo
+  4. H-5  → Install Node.js
+  5. H-8  → Decide site name
+  6. H-9  → Decide color scheme
+  7. H-6  → Set up .env.local
+  8. H-7  → Run SQL in Supabase
+  9. H-13 → Enable email auth
+  10. H-12 → Decide Super Admin email
+  ────────────────────────────────────
+
+ESTIMATED TOTAL HUMAN TIME: ~8-10 hours
+(spread across the entire project lifecycle)
+
+TIP: Do H-1 through H-9 BEFORE asking AI to start coding.
+     This way AI has everything it needs to build fast!
+
+================================================================
