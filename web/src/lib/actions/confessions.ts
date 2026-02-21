@@ -33,8 +33,19 @@ interface ActionResult {
 export async function createConfession(content: string): Promise<ActionResult> {
     const supabase = await createClient()
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: 'You must be logged in to post.' }
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    // Debug: log auth state
+    console.log('[createConfession] auth.getUser result:', {
+        userId: user?.id ?? null,
+        userEmail: user?.email ?? null,
+        userError: userError?.message ?? null,
+    })
+
+    if (!user) {
+        console.error('[createConfession] No authenticated user found. userError:', userError)
+        return { success: false, error: 'You must be logged in to post.' }
+    }
 
     // Trim and validate content
     const trimmedContent = content.trim()
@@ -50,12 +61,24 @@ export async function createConfession(content: string): Promise<ActionResult> {
     const startOfDay = new Date()
     startOfDay.setHours(0, 0, 0, 0)
 
-    const { count } = await supabase
+    const { count, error: countError } = await supabase
         .from('confessions')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('is_deleted', false)
         .gte('created_at', startOfDay.toISOString())
+
+    if (countError) {
+        console.error('[createConfession] Rate-limit count query error:', {
+            code: countError.code,
+            message: countError.message,
+            details: countError.details,
+            hint: countError.hint,
+        })
+        // Don't block posting if we can't count — just continue
+    }
+
+    console.log('[createConfession] Daily post count:', count, '/ max:', MAX_POSTS_PER_DAY)
 
     if ((count ?? 0) >= MAX_POSTS_PER_DAY) {
         return {
@@ -74,7 +97,9 @@ export async function createConfession(content: string): Promise<ActionResult> {
     }
 
     // Insert the confession
-    const { error: insertError } = await supabase
+    console.log('[createConfession] Attempting insert for user_id:', user.id)
+
+    const { data: insertData, error: insertError } = await supabase
         .from('confessions')
         .insert({
             user_id: user.id,
@@ -82,11 +107,26 @@ export async function createConfession(content: string): Promise<ActionResult> {
             likes_count: 0,
             is_deleted: false,
         })
+        .select('id')
 
     if (insertError) {
-        console.error('Error inserting confession:', insertError)
-        return { success: false, error: 'Failed to post confession. Please try again.' }
+        console.error('[createConfession] Insert FAILED — full error:', {
+            code: insertError.code,
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint,
+        })
+        // Return the actual Supabase error message in dev, generic in prod
+        const isDev = process.env.NODE_ENV === 'development'
+        return {
+            success: false,
+            error: isDev
+                ? `DB Error [${insertError.code}]: ${insertError.message}`
+                : 'Failed to post confession. Please try again.',
+        }
     }
+
+    console.log('[createConfession] Insert SUCCESS, new confession id:', insertData?.[0]?.id)
 
     revalidatePath('/')
     revalidatePath('/my-confessions')
