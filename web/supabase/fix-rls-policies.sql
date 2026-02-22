@@ -151,20 +151,32 @@ FROM information_schema.triggers
 WHERE trigger_name = 'on_auth_user_created';
 
 -- If the above returns no rows, the trigger is missing. Run:
--- (This is already in schema.sql but copying here for safety)
+-- (This is already in schema.sql but copying here with improvements)
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    new_username TEXT;
 BEGIN
+    new_username := COALESCE(NEW.raw_user_meta_data->>'username', 'user_' || LEFT(NEW.id::text, 8));
+    
     INSERT INTO profiles (id, username, email, role, is_verified)
     VALUES (
         NEW.id,
-        COALESCE(NEW.raw_user_meta_data->>'username', 'user_' || LEFT(NEW.id::text, 8)),
+        new_username,
         NEW.email,
         'user',
         COALESCE(NEW.email_confirmed_at IS NOT NULL, false)
     )
-    ON CONFLICT (id) DO NOTHING; -- Prevent duplicate profile creation
+    ON CONFLICT (id) DO UPDATE SET
+        username = EXCLUDED.username,
+        email = EXCLUDED.email,
+        updated_at = NOW();
+        
     RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+    -- If username is taken, this will still fail, but we've handled the ID conflict
+    -- The app-side check should prevent username conflicts
+    RETURN NEW; 
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

@@ -87,7 +87,7 @@ export function HomeFeedClient({ initialConfessions, userLikes, userReports, isL
                     <div className="flex items-center justify-center gap-2">
                         <Heart className="h-6 w-6 text-primary fill-current" />
                         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                            Truth of Your Heart
+                            OffChest
                         </h1>
                     </div>
                     <p className="text-muted-foreground text-sm max-w-sm mx-auto">

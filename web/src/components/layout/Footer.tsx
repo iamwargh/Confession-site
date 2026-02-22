@@ -9,7 +9,7 @@ export function Footer() {
                 <div className="flex items-center gap-2">
                     <Heart className="h-4 w-4 text-primary fill-current" />
                     <span>
-                        <span className="font-semibold text-foreground">TruthOfYourHeart</span>
+                        <span className="font-semibold text-foreground">OffChest</span>
                         {' '}&mdash; A safe, anonymous space.
                     </span>
                 </div>

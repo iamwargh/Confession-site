@@ -3,15 +3,17 @@
 /**
  * POST CONFESSION PAGE — AI-11 (Claude Sonnet 4.6)
  * Text-only, 1000 char limit, char counter, rate limit check, mental health banner
+ * 
+ * FIX: Removed client-side keyword-filter logic to prevent leaking 
+ * sensitive blocked words in the JS bundle. All moderate is now server-side.
  */
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { createConfession } from '@/lib/actions/confessions'
 import { useRouter } from 'next/navigation'
 import { Heart, Loader2, XCircle, CheckCircle, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { MentalHealthWarning } from '@/components/moderation/MentalHealthWarning'
-import { filterConfessionContent } from '@/lib/moderation/keyword-filter'
 
 const MAX_CHARS = 1000
 const MIN_CHARS = 10
@@ -23,13 +25,6 @@ export default function PostConfessionPage() {
     const [success, setSuccess] = useState(false)
     const [showMentalHealthBanner, setShowMentalHealthBanner] = useState(false)
     const [detectedKeywords, setDetectedKeywords] = useState<string[]>([])
-    const router = useRouter()
-
-    // Real-time mental health keyword detection while typing
-    const liveFilterResult = useMemo(() => {
-        if (content.trim().length < 5) return null
-        return filterConfessionContent(content)
-    }, [content])
 
     const remaining = MAX_CHARS - content.length
     const isValid = content.trim().length >= MIN_CHARS && content.length <= MAX_CHARS
@@ -49,8 +44,7 @@ export default function PostConfessionPage() {
 
         if (result.data?.showMentalHealthBanner) {
             setShowMentalHealthBanner(true)
-            // Keep the keywords from the live filter
-            setDetectedKeywords(liveFilterResult?.mentalHealthKeywordsFound ?? [])
+            setDetectedKeywords(result.data.mentalHealthKeywordsFound || [])
         }
 
         setSuccess(true)
@@ -79,15 +73,13 @@ export default function PostConfessionPage() {
                     </p>
                     <div className="flex gap-3 justify-center">
                         <button
-                            onClick={() => { setSuccess(false); setContent(''); }}
+                            onClick={() => { setSuccess(false); setContent(''); setShowMentalHealthBanner(false); }}
                             className="h-9 px-4 rounded-md border border-border text-sm font-medium hover:bg-accent transition-colors"
                         >
                             Post another
                         </button>
-                        <Link href="/">
-                            <button className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-                                View Feed
-                            </button>
+                        <Link href="/" className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center">
+                            View Feed
                         </Link>
                     </div>
                 </div>
@@ -150,15 +142,6 @@ export default function PostConfessionPage() {
                             </span>
                         </div>
                     </div>
-
-                    {/* Live Mental Health Warning (while typing) */}
-                    {liveFilterResult?.hasMentalHealthKeywords && (
-                        <MentalHealthWarning
-                            show={true}
-                            variant="poster"
-                            detectedKeywords={liveFilterResult.mentalHealthKeywordsFound}
-                        />
-                    )}
 
                     {/* Anonymous reminder */}
                     <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">

@@ -9,7 +9,7 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-    title: 'Trending Confessions — Truth of Your Heart',
+    title: 'Trending Confessions — OffChest',
     description: 'The most popular anonymous confessions this week.',
 }
 

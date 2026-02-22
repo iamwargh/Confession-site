@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Ban, Clock, LogOut } from 'lucide-react'
+import { Ban, Clock } from 'lucide-react'
+import { SignOutButton } from './signout-button'
 
 /**
  * SUSPENDED PAGE — AI-24 (Claude Opus 4.6)
- * 
+ *
  * Shown when a suspended user tries to access protected routes.
  * Displays the suspension reason and duration.
  */
@@ -21,7 +22,7 @@ export default async function SuspendedPage() {
     const { data: profile } = await supabase
         .from('profiles')
         .select('is_suspended, suspended_until, suspension_reason')
-        .eq('id', user.id)
+        .eq('id', user!.id)
         .single()
 
     // If not actually suspended, redirect home
@@ -56,7 +57,7 @@ export default async function SuspendedPage() {
 
             <p className="text-lg text-muted-foreground max-w-md mb-6">
                 {isPermanent
-                    ? 'Your account has been permanently banned from ConfessIt.'
+                    ? 'Your account has been permanently banned from OffChest.'
                     : 'Your account has been temporarily suspended.'
                 }
             </p>
@@ -77,15 +78,8 @@ export default async function SuspendedPage() {
                 </div>
             )}
 
-            <form action="/api/auth/signout" method="POST">
-                <button
-                    type="submit"
-                    className="inline-flex items-center gap-2 rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-accent transition-colors"
-                >
-                    <LogOut className="h-4 w-4" />
-                    Sign Out
-                </button>
-            </form>
+            {/* Client-side sign-out so Navbar immediately reflects logout */}
+            <SignOutButton />
         </div>
     )
 }

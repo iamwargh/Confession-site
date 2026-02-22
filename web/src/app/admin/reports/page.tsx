@@ -12,7 +12,7 @@ import type { Metadata } from 'next'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-    title: 'Reports Queue — Admin | Truth of Your Heart',
+    title: 'Reports Queue — Admin | OffChest',
 }
 
 export default async function AdminReportsPage() {

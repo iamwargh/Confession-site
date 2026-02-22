@@ -90,7 +90,7 @@ export function Navbar() {
                 <Link href="/" className="flex items-center gap-2 font-bold text-primary mr-4 shrink-0">
                     <Heart className="h-5 w-5 fill-current" />
                     <span className="hidden sm:inline text-sm font-bold tracking-tight">
-                        Truth<span className="text-foreground">OfYourHeart</span>
+                        Off<span className="text-foreground">Chest</span>
                     </span>
                 </Link>
 

@@ -12,7 +12,7 @@ import type { Metadata } from 'next'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-    title: 'My Confessions — Truth of Your Heart',
+    title: 'My Confessions — OffChest',
     description: 'View and manage your anonymous confessions.',
 }
 

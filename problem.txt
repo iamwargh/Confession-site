@@ -1,0 +1,803 @@
+================================================================================
+  OFFCHEST — FULL PROJECT PROBLEM REPORT
+  Generated: 2026-02-22
+  Scanned by: Antigravity (Google DeepMind)
+================================================================================
+
+This file documents every bug, security issue, UX problem, incomplete feature,
+and code smell found across the entire project. Issues are grouped by severity
+and then by file.
+
+================================================================================
+  SEVERITY KEY
+================================================================================
+
+  [CRITICAL]  Will cause complete feature failure or security breach.
+  [HIGH]      Likely to break UX or cause data issues in production.
+  [MEDIUM]    Will cause noticeable bugs or poor UX in some scenarios.
+  [LOW]       Code smell, minor UX issue, or missing polish.
+  [INCOMPLETE] Feature is partially built/missing entirely.
+
+================================================================================
+  SECTION 1: AUTH SECTION (Close Inspection)
+  Files: auth/callback/route.ts, login/page.tsx, signup/page.tsx,
+         forgot-password/page.tsx, reset-password/page.tsx,
+         auth/verify/page.tsx, proxy.ts (middleware)
+================================================================================
+
+-----------------------------------------------------------------------
+[CRITICAL] AUTH-1 — PKCE callback redirects to wrong URL in production
+File: web/src/app/auth/callback/route.ts (Line 48, 91)
+-----------------------------------------------------------------------
+PROBLEM:
+  When a user confirms their email, the callback redirects using the
+  `next` param: `${siteUrl}${next}`. But the `next` default is `'/'`.
+  This is fine locally, BUT if NEXT_PUBLIC_SITE_URL is not set in
+  Vercel, `siteUrl` falls back to `origin` (which is the request origin
+  — could be Supabase's internal URL in some edge cases).
+
+  Also, after a PKCE code exchange for a NEW signup, the user is
+  redirected to `/` (home) without any welcome message or prompt.
+  They may not realize they're now logged in.
+
+IMPACT: Users may be redirected to wrong URL or land silently on home
+page without confirmation they are verified.
+
+FIX:
+  - Ensure NEXT_PUBLIC_SITE_URL is set in Vercel environment variables.
+  - After successful signup verification, redirect to
+    `/login?verified=true` or `/` with a toast notification.
+
+-----------------------------------------------------------------------
+[CRITICAL] AUTH-2 — No middleware.ts file — proxy.ts is NOT auto-loaded
+File: web/src/proxy.ts
+-----------------------------------------------------------------------
+PROBLEM:
+  Next.js middleware MUST be in `src/middleware.ts` (or project root
+  `middleware.ts`). The file is named `proxy.ts`, so Next.js NEVER
+  automatically runs it. All route protection (auth guards, role checks,
+  suspension checks) is completely bypassed.
+
+  The file exports a `proxy` function and a `config` object, but
+  Next.js will not pick this up because it is not named `middleware.ts`
+  and the export is not called `middleware`.
+
+IMPACT: CRITICAL security hole — ALL protected routes (/admin,
+/superadmin, /post, /my-confessions, /account) are publicly accessible
+without authentication. Anyone can browse them without being logged in.
+
+FIX:
+  Create `web/src/middleware.ts` that imports and re-exports from
+  proxy.ts:
+    import { proxy as middleware } from './proxy'
+    export { middleware }
+    export { config } from './proxy'
+  OR rename proxy.ts → middleware.ts and rename the export `proxy` to
+  `middleware`.
+
+-----------------------------------------------------------------------
+[HIGH] AUTH-3 — suspended/page.tsx sign-out uses a broken form POST
+File: web/src/app/suspended/page.tsx (Line 80)
+-----------------------------------------------------------------------
+PROBLEM:
+  The sign-out button is a native HTML form with:
+    <form action="/api/auth/signout" method="POST">
+  This will work, BUT there is no CSRF protection on that endpoint.
+  More importantly: after sign-out, the Supabase session cookies are
+  cleared server-side, but the browser-side Supabase client still has
+  a stale in-memory token. The user may appear logged in in the Navbar
+  until they refresh.
+
+  Also, the suspended page has a brand name typo:
+    Line 59: "permanently banned from ConfessIt."  ← should be "OffChest"
+
+IMPACT: Brand inconsistency; potential stale auth state shown in Navbar.
+
+FIX:
+  - Replace the form POST sign-out with a client button that calls
+    supabase.auth.signOut() then router.push('/login').
+  - Fix "ConfessIt" → "OffChest".
+
+-----------------------------------------------------------------------
+[HIGH] AUTH-4 — Login page: suspended user check is done CLIENT-SIDE
+File: web/src/app/login/page.tsx (Lines 173-188)
+-----------------------------------------------------------------------
+PROBLEM:
+  After email/password login, the login form fetches the profile client-
+  side to check `is_suspended`. A determined attacker could bypass this
+  check by intercepting/modifying the JS. The suspension check MUST be
+  enforced server-side (which the proxy middleware does, but that is also
+  broken — see AUTH-2).
+
+  Also, `suspended_until` expiry is NOT checked here. A user suspended
+  temporarily will always be blocked even after expiry.
+
+IMPACT: Broken suspension expiry check at login. Client-side security
+bypass possible.
+
+FIX:
+  - Check `suspended_until < new Date()` before calling signOut().
+  - Move suspension enforcement to server middleware (fix AUTH-2 first).
+
+-----------------------------------------------------------------------
+[HIGH] AUTH-5 — forgot-password: uses `window.location.origin` in SSR
+File: web/src/app/forgot-password/page.tsx (Line 27)
+-----------------------------------------------------------------------
+PROBLEM:
+  Line 27:
+    `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/reset-password`
+  
+  `window` is not defined on the server. Although forgot-password is a
+  client component ('use client'), if there's any SSR pre-render pass,
+  this will throw "window is not defined".
+
+  The same pattern exists in signup/page.tsx (Line 99) and login/page.tsx
+  (Line 109) — all three components build `siteUrl` using
+  `window.location.origin` as a fallback, but they wrap it with
+  `typeof window !== 'undefined'`. The forgot-password page does NOT
+  have that guard. It passes `window.location.origin` directly into
+  the function call.
+
+IMPACT: Runtime error "window is not defined" crash in SSR/edge runtime.
+
+FIX:
+  Change Line 27 to:
+    `${process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/reset-password`
+
+-----------------------------------------------------------------------
+[HIGH] AUTH-6 — reset-password: no guard if user is NOT in recovery state
+File: web/src/app/reset-password/page.tsx (Lines 25-34)
+-----------------------------------------------------------------------
+PROBLEM:
+  The page listens for PASSWORD_RECOVERY events but does nothing with
+  them (the handler is empty). If a user visits /reset-password directly
+  (without clicking a recovery link), they could attempt to update their
+  password. `supabase.auth.updateUser({ password })` will succeed if the
+  user happens to be logged in via a normal session — there is no check
+  that the user arrived via a recovery flow.
+
+  Also, the `useEffect` subscription is only for awareness — there is no
+  state to block the form if the user is not in recovery mode.
+
+IMPACT: A logged-in user who navigates to /reset-password directly
+could inadvertently see and submit the password reset form without a
+recovery token.
+
+FIX:
+  Add state `isRecoveryMode: boolean` (default false). Set it to true
+  only when the PASSWORD_RECOVERY event fires. Block the form with a
+  "This link is invalid or expired" message if isRecoveryMode is false.
+
+-----------------------------------------------------------------------
+[MEDIUM] AUTH-7 — auth/verify/page.tsx "Resend" button does nothing
+File: web/src/app/auth/verify/page.tsx (Line 26)
+-----------------------------------------------------------------------
+PROBLEM:
+  The "Click to resend" button has no onClick handler. It is a dead
+  button that does absolutely nothing when clicked.
+
+IMPACT: Users who don't receive the verification email have no way to
+resend it from this page, leading to frustration.
+
+FIX:
+  Add an onClick handler that calls
+  supabase.auth.resend({ type: 'signup', email }) and shows a success
+  message. Since the email is not stored on this page, it must be passed
+  as a URL param (e.g., ?email=...) from the signup page.
+
+-----------------------------------------------------------------------
+[MEDIUM] AUTH-8 — Signup page: no email format validation beyond basic check
+File: web/src/app/signup/page.tsx (Line 104)
+-----------------------------------------------------------------------
+PROBLEM:
+  The email validation is:
+    email.includes('@') && email.includes('.')
+  This is NOT a proper email regex. It accepts strings like
+  "@.", "test@.", "@test." as valid email addresses.
+
+IMPACT: Users can submit clearly malformed emails and Supabase will
+reject them with a raw error (not user-friendly).
+
+FIX:
+  Use a proper email regex:
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+
+-----------------------------------------------------------------------
+[MEDIUM] AUTH-9 — No "Remember me" / session duration control
+File: web/src/app/login/page.tsx
+-----------------------------------------------------------------------
+PROBLEM:
+  Supabase's default session expires in 1 hour (access token), but
+  refresh tokens extend it. There is no "Remember me" option, and users
+  may find themselves logged out unexpectedly if cookies expire.
+
+IMPACT: Poor UX for users who want persistent sessions.
+
+FIX:
+  Either document the expected behavior or add a "Remember me" checkbox
+  that uses Supabase's session persistence options.
+
+-----------------------------------------------------------------------
+[LOW] AUTH-10 — GoogleIcon and XIcon are duplicated in login AND signup
+File: web/src/app/login/page.tsx (Lines 17-34)
+       web/src/app/signup/page.tsx (Lines 15-32)
+-----------------------------------------------------------------------
+PROBLEM:
+  The GoogleIcon, XIcon, SocialButton, and OrDivider components are
+  copy-pasted identically into both login/page.tsx and signup/page.tsx.
+  This violates DRY (Don't Repeat Yourself) and makes maintenance harder.
+
+IMPACT: If you update the Google icon in one file, you must remember to
+update the other. This has already caused a tiny inconsistency: the
+SocialButton rendering in login (Lines 70-76) and signup (Line 68-69)
+are slightly different.
+
+FIX:
+  Extract these to a shared file, e.g.:
+    web/src/components/auth/SocialAuthButtons.tsx
+
+================================================================================
+  SECTION 2: MIDDLEWARE / ROUTING SECURITY
+  File: web/src/proxy.ts
+================================================================================
+
+-----------------------------------------------------------------------
+[CRITICAL] MW-1 — Same as AUTH-2: middleware is named proxy.ts not middleware.ts
+-----------------------------------------------------------------------
+(See AUTH-2 above for full details. Restated here for completeness.)
+
+-----------------------------------------------------------------------
+[HIGH] MW-2 — Suspension check in proxy runs on EVERY protected route visit
+File: web/src/proxy.ts (Lines 126-174)
+-----------------------------------------------------------------------
+PROBLEM:
+  For every single request to /post, /my-confessions, /account, /admin,
+  or /superadmin, the proxy executes TWO consecutive Supabase queries:
+    1. getUser() — to check authentication
+    2. profiles select — to check suspension + role
+
+  This adds ~100-200ms of database latency to every page load for
+  authenticated users on protected routes. In a high-traffic app this
+  becomes a scalability bottleneck.
+
+IMPACT: Noticeable slowdown on every authenticated page navigation.
+
+FIX:
+  Cache the profile data in a short-lived cookie or use Supabase's JWT
+  custom claims to store role metadata (eliminating the DB query).
+
+================================================================================
+  SECTION 3: CORE FEATURES
+================================================================================
+
+-----------------------------------------------------------------------
+[HIGH] CORE-1 — likes_count is manually synced — can go out of sync
+File: web/src/lib/actions/confessions.ts (Lines 188-201)
+-----------------------------------------------------------------------
+PROBLEM:
+  The `toggleLike` function manually:
+  1. Inserts/deletes from the `likes` table
+  2. Then fetches the current `likes_count` from `confessions`
+  3. Then manually updates `likes_count`
+
+  This is a race condition. If two users like the same confession at
+  exactly the same time:
+    - User A reads likes_count = 5 → writes 6
+    - User B reads likes_count = 5 → writes 6
+  Result: count is 6 instead of 7. Likes are silently lost.
+
+IMPACT: Like count becomes inaccurate under concurrent use.
+
+FIX:
+  Use Supabase's RPC or atomic SQL increment:
+    .rpc('increment_likes', { confession_id: confessionId })
+  Or use raw SQL: UPDATE confessions SET likes_count = likes_count + 1
+
+-----------------------------------------------------------------------
+[MEDIUM] CORE-2 — home-feed-client.tsx: new page likes not fetched
+File: web/src/app/home-feed-client.tsx (Lines 62-64)
+-----------------------------------------------------------------------
+PROBLEM:
+  When the infinite scroll loads more confessions (page 2+), the code
+  fetches new confessions but does NOT fetch whether the current user
+  has already liked those new confessions. The comment on Line 63 even
+  admits: "(done client-side for simplicity)".
+
+  This means that on page 2+, all newly loaded confessions will show 
+  the heart as "not liked" even if the user already liked them.
+
+IMPACT: Incorrect like state for confessions loaded beyond the first page.
+
+FIX:
+  After fetching newConfessions, issue a second query to `likes` to get
+  the user's liked confession IDs and merge with `likedIds` state.
+
+-----------------------------------------------------------------------
+[MEDIUM] CORE-3 — toggleLike returns newCount: 0 on errors
+File: web/src/lib/actions/confessions.ts (Lines 166, 179, 181)
+-----------------------------------------------------------------------
+PROBLEM:
+  On error paths, the function returns `newCount: 0`:
+    { success: false, error: '...', liked: true, newCount: 0 }
+  If the caller uses `newCount` for optimistic UI (without checking
+  `success` first), the UI will show "0 likes" incorrectly.
+
+IMPACT: UI could briefly flash "0 likes" if there's an error condition.
+
+FIX:
+  Pass the CURRENT count as a parameter into the function and return
+  it unchanged on error paths, or always check `success` in the caller.
+
+-----------------------------------------------------------------------
+[MEDIUM] CORE-4 — reportConfession: uses .single() which errors on no rows
+File: web/src/lib/actions/confessions.ts (Lines 234-240)
+-----------------------------------------------------------------------
+PROBLEM:
+  When checking for an existing report:
+    const { data: existing } = await supabase.from('reports')
+      .select('id')
+      .eq('confession_id', confessionId)
+      .eq('reported_by', user.id)
+      .single()
+  
+  `.single()` throws a Supabase error if there are no rows (PGRST116).
+  This error is being silently swallowed (no error handling), but it
+  means the `existing` variable will be null from an error, not a
+  genuine "no match". The code correctly continues, but the error is
+  logged to stdout as a noise error in Supabase logs.
+
+FIX:
+  Use `.maybeSingle()` instead of `.single()`:
+    .maybeSingle()
+  This returns null cleanly when there's no row.
+
+  Same issue exists in toggleLike (Line 154) for existingLike check.
+
+-----------------------------------------------------------------------
+[MEDIUM] CORE-5 — confession/[id]/page.tsx: uses .single() for like/report
+File: web/src/app/confession/[id]/page.tsx (Lines 66-80)
+-----------------------------------------------------------------------
+PROBLEM:
+  Same issue as CORE-4. Both the like check and report check use
+  `.single()` which will show PGRST116 errors when the user hasn't
+  liked or reported yet.
+
+FIX: Replace both `.single()` calls with `.maybeSingle()`.
+
+-----------------------------------------------------------------------
+[INCOMPLETE] CORE-6 — Comments section is a placeholder
+File: web/src/app/confession/[id]/page.tsx (Lines 108-111)
+-----------------------------------------------------------------------
+PROBLEM:
+  The confession detail page has:
+    <h3>Comments</h3>
+    <p>Comments are coming soon. 💬</p>
+  
+  Comments are completely unimplemented. There is no comments table,
+  no comment components, and no planned implementation in ai.txt or
+  pendingtask.txt.
+
+IMPACT: Missing core social feature. Users may expect to be able to
+comment on confessions.
+
+-----------------------------------------------------------------------
+[INCOMPLETE] CORE-7 — No "Resend verification email" functionality
+File: web/src/app/auth/verify/page.tsx
+-----------------------------------------------------------------------
+(See AUTH-7 above — the button exists but does nothing.)
+
+================================================================================
+  SECTION 4: API ROUTES
+================================================================================
+
+-----------------------------------------------------------------------
+[HIGH] API-1 — /api/auth/signout uses origin from request URL (not NEXT_PUBLIC_SITE_URL)
+File: web/src/app/api/auth/signout/route.ts (Line 12-13)
+-----------------------------------------------------------------------
+PROBLEM:
+  After sign-out, the redirect uses:
+    const { origin } = new URL(request.url)
+    return NextResponse.redirect(`${origin}/login`, { status: 302 })
+  
+  On Vercel, `request.url` may be an internal/proxied URL, not the
+  public-facing domain. This means the redirect could be to the wrong
+  URL in production.
+
+FIX:
+  Use: `process.env.NEXT_PUBLIC_SITE_URL || origin` as the base.
+
+-----------------------------------------------------------------------
+[HIGH] API-2 — /api/account/delete does not delete likes AND reports
+File: web/src/app/api/account/delete/route.ts (Line 40)
+-----------------------------------------------------------------------
+PROBLEM:
+  The account delete route deletes likes but does NOT delete reports
+  submitted by the user:
+    await supabase.from('likes').delete().eq('user_id', user.id)
+    // ← Missing: reports submitted by this user
+
+  The comment on Line 39 says "Delete likes and reports" but only
+  deletes likes.
+
+IMPACT: Orphaned report records remain in the database after account
+deletion, with a foreign key pointing to a deleted auth user.
+
+FIX:
+  Add before deleteUser():
+    await supabase.from('reports').delete().eq('reported_by', user.id)
+
+-----------------------------------------------------------------------
+[MEDIUM] API-3 — Debug route is publicly accessible in production
+File: web/src/app/api/debug/supabase/route.ts
+-----------------------------------------------------------------------
+PROBLEM:
+  There is a `/api/debug/supabase` endpoint. Debug endpoints that expose
+  Supabase connection info should NEVER be accessible in production.
+  There is likely no auth check or environment guard on this route.
+
+IMPACT: Could expose internal Supabase configuration or data.
+
+FIX:
+  Add at the top of the route handler:
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+  Or delete the file before production deployment.
+
+================================================================================
+  SECTION 5: SECURITY ISSUES
+================================================================================
+
+-----------------------------------------------------------------------
+[CRITICAL] SEC-1 — NEXT_PUBLIC_SITE_URL is set to localhost in .env.local
+File: web/.env.local (Line 8)
+-----------------------------------------------------------------------
+PROBLEM:
+  Line 8: NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+  This is fine for local development but if this file is accidentally
+  deployed (via Docker build or similar), ALL email verification links
+  and OAuth redirects will point to localhost:3000 in production,
+  making every verification email broken.
+
+  The .gitignore should exclude this file — verify it does.
+
+IMPACT: If deployed incorrectly, ALL auth email links break.
+
+FIX:
+  - Ensure .env.local is in .gitignore (it appears to be, but verify).
+  - Document clearly that NEXT_PUBLIC_SITE_URL must be set to
+    https://offchest.vercel.app in Vercel environment settings.
+
+-----------------------------------------------------------------------
+[CRITICAL] SEC-2 — Supabase service role key is in .env.local (risk of exposure)
+File: web/.env.local (Line 5)
+-----------------------------------------------------------------------
+PROBLEM:
+  The SUPABASE_SERVICE_ROLE_KEY is stored in .env.local. This key
+  bypasses ALL Row Level Security policies. It should:
+    1. NEVER be exposed to the client (must not have NEXT_PUBLIC_ prefix — it doesn't, good)
+    2. Never be committed to git (must be in .gitignore — verify)
+    3. Only be used in server-side code (it is, good)
+
+  However, the admin.ts client uses this key and is imported in
+  confessions.ts (server action) — server actions run in the server
+  context, so this is currently safe. But a future mistake importing
+  admin.ts in a client component would leak the key.
+
+FIX:
+  - Add a runtime check in admin.ts:
+    if (typeof window !== 'undefined') throw new Error('Admin client cannot be used client-side')
+  - Consider using SUPABASE_SERVICE_ROLE_KEY (no NEXT_PUBLIC prefix) — already done, good.
+
+-----------------------------------------------------------------------
+[HIGH] SEC-3 — keyword-filter.ts is imported in a client component
+File: web/src/app/post/page.tsx (Line 14)
+       web/src/lib/moderation/keyword-filter.ts
+-----------------------------------------------------------------------
+PROBLEM:
+  `filterConfessionContent` from keyword-filter.ts is imported directly
+  in `post/page.tsx` which is a CLIENT component ('use client').
+
+  This means the ENTIRE keyword-filter including the BLOCKED_WORDS list
+  and MENTAL_HEALTH_KEYWORDS list is bundled into the client-side
+  JavaScript and visible to any user who inspects the browser bundle.
+
+  Users can see the exact words that are blocked and craft confessions
+  that bypass the filter.
+
+IMPACT: Keyword filter can be trivially bypassed by inspecting JS bundle.
+
+FIX:
+  The keyword filter should ONLY run server-side (in the server action).
+  Remove the import from post/page.tsx. The live mental health warning
+  can use a SEPARATE, less sensitive client-side heuristic (or accept
+  that users may see those trigger words in the bundle, as they're less
+  sensitive).
+
+-----------------------------------------------------------------------
+[MEDIUM] SEC-4 — No rate limiting on OAuth endpoints
+File: web/src/app/login/page.tsx, signup/page.tsx
+-----------------------------------------------------------------------
+PROBLEM:
+  OAuth logins (Google, X) have no rate limiting. A malicious script
+  could trigger hundreds of OAuth flows per second without restriction,
+  potentially causing DoS on the OAuth redirect endpoint.
+
+FIX:
+  Rely on Supabase's built-in rate limiting, or add a simple debounce
+  on the OAuth buttons (disable for a few seconds after first click —
+  currently the loading state partially handles this, but only if the
+  request succeeds quickly).
+
+================================================================================
+  SECTION 6: UI / UX PROBLEMS
+================================================================================
+
+-----------------------------------------------------------------------
+[MEDIUM] UX-1 — Navbar: the user icon links to /my-confessions, not /account
+File: web/src/components/layout/Navbar.tsx (Lines 148-156)
+-----------------------------------------------------------------------
+PROBLEM:
+  The user/profile icon in the top-right navbar links to /my-confessions
+  instead of /account. This is counterintuitive — a user icon should
+  open the account/profile page.
+
+FIX:
+  Change the Link href from /my-confessions to /account.
+
+-----------------------------------------------------------------------
+[MEDIUM] UX-2 — Account page: "Change Password" links to /forgot-password
+File: web/src/app/account/page.tsx (Line 90)
+-----------------------------------------------------------------------
+PROBLEM:
+  The "Change Password" card links to /forgot-password. This is the
+  "I forgot my password" flow which asks for your email and sends an
+  external link. A logged-in user changing their password should not
+  need to go through the "forgot password" flow — they should be able
+  to update it directly after confirming their old password.
+
+FIX:
+  Create a dedicated /account/change-password page where logged-in
+  users enter their old + new password and call supabase.auth.updateUser.
+
+-----------------------------------------------------------------------
+[MEDIUM] UX-3 — No loading skeleton on home feed server component
+File: web/src/app/loading.tsx
+-----------------------------------------------------------------------
+PROBLEM:
+  There is a loading.tsx in the app directory, but the home page fetches
+  confessions and user data server-side synchronously before rendering.
+  This means the page is blank until ALL data loads, with no skeleton UI
+  for the individual confession cards.
+
+FIX:
+  Use Suspense boundaries with skeleton components for a better
+  perceived performance.
+
+-----------------------------------------------------------------------
+[MEDIUM] UX-4 — metadataBase URL does not match actual deployment URL
+File: web/src/app/layout.tsx (Line 17)
+-----------------------------------------------------------------------
+PROBLEM:
+  Line 17: metadataBase: new URL("https://offchest.app"),
+  But the actual deployment URL appears to be https://offchest.vercel.app
+  (based on conversation history). If the domain is not yet
+  `offchest.app`, open-graph images and canonical URLs will be wrong.
+
+FIX:
+  Change to: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://offchest.vercel.app')
+
+-----------------------------------------------------------------------
+[LOW] UX-5 — password strength bar only checks length, not complexity
+File: web/src/app/signup/page.tsx (Lines 354-366)
+-----------------------------------------------------------------------
+PROBLEM:
+  The password strength indicator has 4 bars that fill based on
+  password.length progression. It does NOT check for:
+  - Uppercase letters
+  - Numbers
+  - Special characters
+  A password of "aaaaaaaa" (8 'a's) shows as full strength (green).
+
+FIX:
+  Add complexity checks to the strength calculation.
+
+-----------------------------------------------------------------------
+[LOW] UX-6 — Post page: button inside <Link> (nested interactive elements)
+File: web/src/app/post/page.tsx (Lines 87-91)
+       web/src/app/home-feed-client.tsx (Lines 99-107, 110-119)
+       web/src/app/my-confessions/page.tsx (Lines 46-51)
+-----------------------------------------------------------------------
+PROBLEM:
+  Multiple places have a <button> nested inside a <Link>:
+    <Link href="/"><button>View Feed</button></Link>
+  This is invalid HTML. A <button> inside an <a> is not valid per the
+  HTML spec and may cause accessibility issues.
+
+FIX:
+  Use one or the other — either a styled <Link> to look like a button,
+  or use router.push() inside the button's onClick handler.
+
+-----------------------------------------------------------------------
+[LOW] UX-7 — No "back to feed" link on Trending page after loading the page
+File: web/src/app/trending/page.tsx (Line 59)
+-----------------------------------------------------------------------
+PROBLEM:
+  The "← Latest" link on the trending page has no label for screen
+  readers other than the arrow character. It should have a proper
+  aria-label.
+
+FIX:
+  Add aria-label="Back to Latest Feed" to the Link.
+
+================================================================================
+  SECTION 7: CODE QUALITY / TYPESCRIPT ISSUES
+================================================================================
+
+-----------------------------------------------------------------------
+[MEDIUM] CODE-1 — Navbar uses `any` type for user and profile state
+File: web/src/components/layout/Navbar.tsx (Lines 11-12)
+-----------------------------------------------------------------------
+PROBLEM:
+  const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+  
+  Using `any` loses all TypeScript type safety. Errors like accessing
+  `profile.nonExistentField` won't be caught at compile time.
+
+FIX:
+  Import proper types from Supabase and define a Profile interface.
+
+-----------------------------------------------------------------------
+[MEDIUM] CODE-2 — confessions.ts data?: any in ActionResult
+File: web/src/lib/actions/confessions.ts (Line 26)
+-----------------------------------------------------------------------
+PROBLEM:
+  data?: any in ActionResult loses type safety.
+
+FIX:
+  Define specific data types for each action's return value.
+
+-----------------------------------------------------------------------
+[LOW] CODE-3 — Duplicate Supabase client setup inside auth/callback
+File: web/src/app/auth/callback/route.ts (Lines 52-67 and 94-109)
+-----------------------------------------------------------------------
+PROBLEM:
+  The Supabase client is created twice with identical cookie setup code
+  (once for PKCE flow, once for OTP flow). This is verbose repetition.
+
+FIX:
+  Extract the client creation into a helper at the top of the function
+  that accepts the response object and returns the client.
+
+-----------------------------------------------------------------------
+[LOW] CODE-4 — keyword-filter.ts BLOCKED_WORDS list is nearly empty
+File: web/src/lib/moderation/keyword-filter.ts (Lines 29-54)
+-----------------------------------------------------------------------
+PROBLEM:
+  The blocked words list is a placeholder. The comment says:
+  "The human should add the actual offensive terms here."
+  Currently only self-harm phrases and terrorism terms are listed.
+  There are NO hate speech slurs, profanity filters, or regional
+  offensive terms.
+
+IMPACT: Hate speech, slurs, and offensive content will not be blocked.
+
+FIX:
+  This is a human task (H-11 in human.txt) — populate the list.
+
+-----------------------------------------------------------------------
+[LOW] CODE-5 — next.config.ts is empty (no performance optimizations)
+File: web/next.config.ts
+-----------------------------------------------------------------------
+PROBLEM:
+  The Next.js config is essentially empty with just a comment placeholder.
+  Missing recommended optimizations:
+  - images.remotePatterns (if using external images)
+  - No compression config
+  - No headers (security headers like Content-Security-Policy)
+  - No rewrites/redirects
+
+FIX:
+  Add at minimum: security headers (X-Frame-Options, X-Content-Type-Options,
+  Referrer-Policy, Content-Security-Policy).
+
+================================================================================
+  SECTION 8: MISSING FEATURES (INCOMPLETE)
+================================================================================
+
+-----------------------------------------------------------------------
+[INCOMPLETE] FEAT-1 — Comments system not built
+(See CORE-6 above)
+
+-----------------------------------------------------------------------
+[INCOMPLETE] FEAT-2 — No pagination / resend on verify email page
+(See AUTH-7 above)
+
+-----------------------------------------------------------------------
+[INCOMPLETE] FEAT-3 — No notification system for liked confessions
+  There is no way for users to know when their confessions are liked.
+
+-----------------------------------------------------------------------
+[INCOMPLETE] FEAT-4 — No account settings page (username change, etc.)
+  The account page shows info but has no way to change username.
+  Change password goes through the reset flow (wrong UX - see UX-2).
+
+-----------------------------------------------------------------------
+[INCOMPLETE] FEAT-5 — Admin panels not verified
+  The /admin and /superadmin routes exist but were not scanned in
+  detail. Based on pendingtask.txt and ai.txt history, some admin
+  features may be incomplete.
+
+-----------------------------------------------------------------------
+[INCOMPLETE] FEAT-6 — Trending algorithm is basic
+File: web/src/app/trending/page.tsx (Lines 22-30)
+  Trending is simply "most likes in last 7 days sorted by likes_count".
+  There is no viral coefficient, time-decay scoring, or weighted ranking.
+  New posts can never rank above old posts with many likes.
+
+================================================================================
+  SECTION 9: ENVIRONMENT & DEPLOYMENT
+================================================================================
+
+-----------------------------------------------------------------------
+[HIGH] ENV-1 — NEXT_PUBLIC_SITE_URL must be set in Vercel
+-----------------------------------------------------------------------
+  As noted in SEC-1, NEXT_PUBLIC_SITE_URL=http://localhost:3000 in
+  .env.local. Before deploying:
+  - Set NEXT_PUBLIC_SITE_URL=https://offchest.vercel.app in Vercel
+  - Set all 3 Supabase env vars in Vercel:
+      NEXT_PUBLIC_SUPABASE_URL
+      NEXT_PUBLIC_SUPABASE_ANON_KEY
+      SUPABASE_SERVICE_ROLE_KEY
+
+-----------------------------------------------------------------------
+[MEDIUM] ENV-2 — No Supabase Redirect URL configured for production
+-----------------------------------------------------------------------
+  OAuth and email verification redirectTo points to
+  `${siteUrl}/auth/callback`. This URL must be whitelisted in:
+  - Supabase Dashboard → Authentication → URL Configuration → Redirect URLs
+  Both http://localhost:3000/auth/callback AND
+  https://offchest.vercel.app/auth/callback must be listed.
+
+================================================================================
+  SUMMARY TABLE
+================================================================================
+
+  Priority   | Count | IDs
+  -----------|-------|------------------------------------------------
+  CRITICAL   |   4   | AUTH-2, MW-1, SEC-1, SEC-2
+  HIGH       |   9   | AUTH-1, AUTH-3, AUTH-4, AUTH-5, AUTH-6,
+             |       | MW-2, CORE-1, API-1, API-2, ENV-1
+  MEDIUM     |  14   | AUTH-7, AUTH-8, AUTH-9, CORE-2, CORE-3,
+             |       | CORE-4, CORE-5, API-3, SEC-3, SEC-4,
+             |       | UX-1, UX-2, UX-3, UX-4, CODE-1, CODE-2, ENV-2
+  LOW        |   8   | AUTH-10, UX-5, UX-6, UX-7, CODE-3,
+             |       | CODE-4, CODE-5
+  INCOMPLETE |   6   | CORE-6, CORE-7, FEAT-1 to FEAT-6
+
+================================================================================
+  TOP 5 MOST URGENT FIXES
+================================================================================
+
+  1. [AUTH-2 / MW-1] CRITICAL: Rename proxy.ts → middleware.ts and
+     rename export `proxy` → `middleware`. Without this, ZERO route
+     protection is active. Anyone can access /admin, /superadmin etc.
+
+  2. [AUTH-2 + ENV-1] CRITICAL: Set NEXT_PUBLIC_SITE_URL in Vercel
+     to the production domain. Also add the production /auth/callback
+     URL to Supabase redirect whitelist.
+
+  3. [SEC-3] HIGH: Remove keyword-filter.ts import from the client
+     component (post/page.tsx). Move all filtering to server-side only.
+
+  4. [CORE-1] HIGH: Fix likes_count race condition by using atomic SQL
+     increment instead of read-modify-write.
+
+  5. [API-2] HIGH: Add missing `reports` deletion in account/delete
+     route to prevent orphaned records.
+
+================================================================================
+  END OF REPORT
+================================================================================

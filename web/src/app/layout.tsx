@@ -10,13 +10,13 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
-  title: "Truth of Your Heart — Anonymous Confessions",
+  title: "OffChest — Anonymous Confessions",
   description:
     "A safe, anonymous space to share your deepest confessions, feelings, and secrets. Your truth matters.",
   keywords: ["confessions", "anonymous", "secrets", "feelings", "truth"],
-  metadataBase: new URL("https://truthofyourheart.com"),
+  metadataBase: new URL("https://offchest.app"),
   openGraph: {
-    title: "Truth of Your Heart — Anonymous Confessions",
+    title: "OffChest — Anonymous Confessions",
     description: "Share your secrets anonymously. A safe space for your truth.",
     type: "website",
     locale: "en_IN",
@@ -31,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={cn(
           "min-h-screen bg-background font-sans antialiased",
           inter.variable,

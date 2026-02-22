@@ -10,7 +10,7 @@ import type { Metadata } from 'next'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-    title: 'Promote/Demote Admins — Super Admin | Truth of Your Heart',
+    title: 'Promote/Demote Admins — Super Admin | OffChest',
 }
 
 export default async function PromoteDemotePage() {

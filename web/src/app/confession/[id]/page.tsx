@@ -27,9 +27,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     return {
         title: data
-            ? `"${data.content.slice(0, 60)}..." — Truth of Your Heart`
-            : 'Confession — Truth of Your Heart',
-        description: data?.content.slice(0, 155) ?? 'Read anonymous confessions on Truth of Your Heart.',
+            ? `"${data.content.slice(0, 60)}..." — OffChest`
+            : 'Confession — OffChest',
+        description: data?.content.slice(0, 155) ?? 'Read anonymous confessions on OffChest.',
     }
 }
 

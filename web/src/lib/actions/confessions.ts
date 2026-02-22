@@ -131,7 +131,13 @@ export async function createConfession(content: string): Promise<ActionResult> {
     revalidatePath('/')
     revalidatePath('/my-confessions')
 
-    return { success: true, data: { showMentalHealthBanner: filterResult.hasMentalHealthKeywords } }
+    return {
+        success: true,
+        data: {
+            showMentalHealthBanner: filterResult.hasMentalHealthKeywords,
+            mentalHealthKeywordsFound: filterResult.mentalHealthKeywordsFound
+        }
+    }
 }
 
 
@@ -145,16 +151,15 @@ export async function toggleLike(confessionId: string): Promise<ActionResult & {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Must be logged in to like.', liked: false, newCount: 0 }
 
-    // Check if already liked
+    // Check if already liked - using maybeSingle to avoid noise error
     const { data: existingLike } = await supabase
         .from('likes')
         .select('id')
         .eq('confession_id', confessionId)
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
     let liked: boolean
-    let delta: number
 
     if (existingLike) {
         // Unlike
@@ -164,9 +169,7 @@ export async function toggleLike(confessionId: string): Promise<ActionResult & {
             .eq('id', existingLike.id)
 
         if (error) return { success: false, error: 'Failed to unlike.', liked: true, newCount: 0 }
-
         liked = false
-        delta = -1
     } else {
         // Like
         const { error } = await supabase
@@ -175,30 +178,28 @@ export async function toggleLike(confessionId: string): Promise<ActionResult & {
 
         if (error) {
             if (error.code === '23505') {
-                // Duplicate — already liked
                 return { success: false, error: 'Already liked.', liked: true, newCount: 0 }
             }
             return { success: false, error: 'Failed to like.', liked: false, newCount: 0 }
         }
-
         liked = true
-        delta = 1
     }
 
-    // Update likes_count in confessions table
+    /**
+     * ATOMICITY NOTE:
+     * We do NOT manually update likes_count here anymore.
+     * The DB schema has AFTER INSERT/DELETE triggers on the 'likes' table
+     * that automatically and atomically increment/decrement confessions.likes_count.
+     */
+
+    // Fetch the new truth after triggers have fired
     const { data: confessionData } = await supabase
         .from('confessions')
         .select('likes_count')
         .eq('id', confessionId)
-        .single()
+        .maybeSingle()
 
-    const currentCount = confessionData?.likes_count ?? 0
-    const newCount = Math.max(0, currentCount + delta)
-
-    await supabase
-        .from('confessions')
-        .update({ likes_count: newCount })
-        .eq('id', confessionId)
+    const newCount = confessionData?.likes_count ?? 0
 
     revalidatePath('/')
     revalidatePath('/trending')
@@ -230,13 +231,13 @@ export async function reportConfession(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Must be logged in to report.' }
 
-    // Check if already reported by this user
+    // Check if already reported by this user - using maybeSingle
     const { data: existing } = await supabase
         .from('reports')
         .select('id')
         .eq('confession_id', confessionId)
         .eq('reported_by', user.id)
-        .single()
+        .maybeSingle()
 
     if (existing) {
         return { success: false, error: 'You have already reported this confession.' }

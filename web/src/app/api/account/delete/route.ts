@@ -36,8 +36,9 @@ export async function POST() {
             .update({ is_deleted: true })
             .eq('user_id', user.id)
 
-        // Delete likes and reports
+        // Delete likes and reports submitted by this user
         await supabase.from('likes').delete().eq('user_id', user.id)
+        await supabase.from('reports').delete().eq('reported_by', user.id)
 
         // Delete the profile (cascades to other FK-linked data)
         await adminClient.from('profiles').delete().eq('id', user.id)

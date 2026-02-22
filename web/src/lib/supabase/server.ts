@@ -13,14 +13,14 @@ export async function createClient() {
                     return cookieStore.getAll()
                 },
                 setAll(cookiesToSet) {
+                    // In Route Handlers, cookies() IS writable — no try/catch needed.
+                    // In Server Components it may throw, which is fine (proxy handles refresh).
                     try {
                         cookiesToSet.forEach(({ name, value, options }) =>
                             cookieStore.set(name, value, options)
                         )
                     } catch {
-                        // The `setAll` method was called from a Server Component.
-                        // This can be ignored if you have middleware refreshing
-                        // user sessions.
+                        // Server Component context — proxy will handle session refresh.
                     }
                 },
             },

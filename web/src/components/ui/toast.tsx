@@ -1,49 +1,13 @@
 "use client"
 
-// Simplified version of toast
-import * as React from "react"
-
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
-
-type ToasterToast = {
-    id: string
-    title?: React.ReactNode
-    description?: React.ReactNode
-    action?: React.ReactNode
-    variant?: "default" | "destructive" | "success"
-}
-
-let count = 0
-
-function genId() {
-    count = (count + 1) % Number.MAX_SAFE_INTEGER
-    return count.toString()
-}
-
-type ActionType = {
-    ADD_TOAST: "ADD_TOAST"
-    UPDATE_TOAST: "UPDATE_TOAST"
-    DISMISS_TOAST: "DISMISS_TOAST"
-    REMOVE_TOAST: "REMOVE_TOAST"
-}
-
-let memoryState: State = { toasts: [] }
-
-function objectKeys<Obj extends object>(obj: Obj): (keyof Obj)[] {
-    return Object.keys(obj) as (keyof Obj)[]
-}
-
-interface State {
-    toasts: ToasterToast[]
-}
-
-// ... Simple implementation for brevity. A proper one would be larger.
-// But as this is Gemini Power (Boilerplate), I'll just use a simpler context-based one or "sonner" if I could install it.
-// I'll stick to a very basic custom hook implementation.
-
 import { createContext, useContext, useState, useCallback } from 'react';
-import { X } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+
+/**
+ * TOAST NOTIFICATION SYSTEM — AI-35 (Gemini Power)
+ * Provides success / destructive / default toast variants.
+ * Consumed via useToast() hook from anywhere inside ToastProvider.
+ */
 
 interface Toast {
     id: string;
@@ -66,6 +30,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const toast = useCallback(({ title, description, variant = 'default' }: Omit<Toast, 'id'>) => {
         const id = Math.random().toString(36).substring(2, 9);
         setToasts((prev) => [...prev, { id, title, description, variant }]);
+        // Auto-dismiss after 5 seconds
         setTimeout(() => {
             setToasts((prev) => prev.filter((t) => t.id !== id));
         }, 5000);
@@ -75,24 +40,49 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         setToasts((prev) => prev.filter((t) => t.id !== id));
     }, []);
 
+    function getVariantStyles(variant: Toast['variant']) {
+        switch (variant) {
+            case 'destructive':
+                return 'bg-red-950 text-red-100 border-red-800';
+            case 'success':
+                return 'bg-green-950 text-green-100 border-green-800';
+            default:
+                return 'bg-background text-foreground border-border';
+        }
+    }
+
+    function getVariantIcon(variant: Toast['variant']) {
+        switch (variant) {
+            case 'destructive': return <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />;
+            case 'success': return <CheckCircle className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />;
+            default: return <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />;
+        }
+    }
+
     return (
         <ToastContext.Provider value={{ toast, dismiss, toasts }}>
             {children}
-            <div className="fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px] gap-2">
+            {/* Toast container — bottom-right */}
+            <div
+                aria-live="polite"
+                aria-atomic="false"
+                className="fixed bottom-4 right-4 z-[100] flex max-h-screen w-full flex-col gap-2 md:max-w-[400px] pointer-events-none"
+            >
                 {toasts.map((t) => (
                     <div
                         key={t.id}
-                        className={`relative flex w-full items-start gap-2 overflow-hidden rounded-md border p-4 shadow-lg pr-8 transition-all pointer-events-auto
-                ${t.variant === 'destructive' ? 'bg-destructive text-destructive-foreground border-destructive' : 'bg-background text-foreground border-border'}
-             `}
+                        role="alert"
+                        className={`relative flex w-full items-start gap-3 overflow-hidden rounded-xl border p-4 shadow-xl pr-10 pointer-events-auto animate-in slide-in-from-bottom-2 duration-300 ${getVariantStyles(t.variant)}`}
                     >
-                        <div className="grid gap-1">
-                            {t.title && <div className="text-sm font-semibold">{t.title}</div>}
-                            {t.description && <div className="text-sm opacity-90">{t.description}</div>}
+                        {getVariantIcon(t.variant)}
+                        <div className="grid gap-0.5 flex-1 min-w-0">
+                            {t.title && <div className="text-sm font-semibold leading-snug">{t.title}</div>}
+                            {t.description && <div className="text-xs opacity-80 leading-relaxed">{t.description}</div>}
                         </div>
                         <button
                             onClick={() => dismiss(t.id)}
-                            className="absolute right-2 top-2 rounded-md p-1 opacity-50 hover:opacity-100 transition-opacity focus:outline-none focus:ring-1 group-hover:opacity-100"
+                            aria-label="Dismiss"
+                            className="absolute right-2 top-2 rounded-md p-1 opacity-40 hover:opacity-100 transition-opacity focus:outline-none"
                         >
                             <X className="h-4 w-4" />
                         </button>

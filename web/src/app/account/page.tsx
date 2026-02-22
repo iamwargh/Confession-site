@@ -9,7 +9,7 @@ import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-    title: 'My Account — Truth of Your Heart',
+    title: 'My Account — OffChest',
 }
 
 export default async function AccountPage() {

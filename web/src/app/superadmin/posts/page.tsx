@@ -8,7 +8,7 @@ import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-    title: 'Post Management — Super Admin | Truth of Your Heart',
+    title: 'Post Management — Super Admin | OffChest',
 }
 
 export default async function SuperAdminPostsPage({
