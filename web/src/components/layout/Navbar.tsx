@@ -145,10 +145,10 @@ export function Navbar() {
                                             Confess
                                         </button>
                                     </Link>
-                                    <Link href="/my-confessions">
+                                    <Link href="/account">
                                         <button
-                                            id="my-confessions-btn"
-                                            aria-label="My Confessions"
+                                            id="account-btn"
+                                            aria-label="My Account"
                                             className="h-9 w-9 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                                         >
                                             <User className="h-4 w-4" />
@@ -215,8 +215,8 @@ export function Navbar() {
                             <Link href="/post" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-primary">
                                 + Confess
                             </Link>
-                            <Link href="/my-confessions" onClick={() => setMobileOpen(false)} className="block py-2 text-sm text-muted-foreground hover:text-foreground">
-                                My Confessions
+                            <Link href="/account" onClick={() => setMobileOpen(false)} className="block py-2 text-sm text-muted-foreground hover:text-foreground">
+                                My Account
                             </Link>
                         </>
                     )}
