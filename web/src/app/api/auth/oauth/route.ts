@@ -1,100 +1,97 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { Provider } from '@supabase/supabase-js'
+import { createHash, randomBytes } from 'crypto'
 
 /**
  * GET /api/auth/oauth?provider=[google|twitter]
  *
- * Server-side OAuth initiation.
- * Runs signInWithOAuth() on the server to generate the OAuth redirect URL
- * without the browser needing direct access to *.supabase.co.
+ * DIRECT OAuth — bypasses supabase.co entirely in the browser.
  *
- * CRITICAL FIX:
- * The old code returned JSON with the redirect URL but did NOT propagate
- * cookies. Supabase PKCE flow stores a `code_verifier` in cookies which
- * is needed later when /auth/callback exchanges the code for a session.
+ * OLD FLOW (broken by ISP):
+ *   Browser → supabase.co/auth/v1/authorize → Google → supabase.co/callback → our app
+ *   ❌ ISP blocks supabase.co
  *
- * FIX STRATEGY: Instead of returning JSON, we now REDIRECT directly.
- * The redirect response carries the Set-Cookie headers with the PKCE
- * code_verifier, so when the user returns to /auth/callback, the
- * verifier cookie is present and the code exchange works.
+ * NEW FLOW:
+ *   Browser → accounts.google.com (direct) → our app/api/auth/callback/google → server-side Supabase
+ *   ✅ Browser never visits supabase.co
+ *
+ * Required env vars:
+ *   GOOGLE_CLIENT_ID     — from Google Cloud Console
+ *   GOOGLE_CLIENT_SECRET  — from Google Cloud Console (used in callback route)
  */
+
+export const runtime = 'nodejs'
+
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url)
-        const provider = searchParams.get('provider') as Provider
+        const provider = searchParams.get('provider')
+        const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '')
 
-        if (!provider || (provider !== 'google' && provider !== 'twitter')) {
-            return NextResponse.json(
-                { ok: false, error: 'Invalid provider.' },
-                { status: 400 }
-            )
-        }
-
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-
-        // Collect cookies that Supabase sets (including PKCE code_verifier)
-        const cookiesToReturn: { name: string; value: string; options: any }[] = []
-
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    getAll() {
-                        return request.cookies.getAll()
-                    },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach((cookie) => {
-                            cookiesToReturn.push(cookie)
-                        })
-                    },
-                },
-                auth: {
-                    persistSession: false,
-                    autoRefreshToken: false,
-                    detectSessionInUrl: false,
-                    flowType: 'pkce',
-                },
+        // ── Google Direct OAuth ─────────────────────────────────────────────────
+        if (provider === 'google') {
+            const clientId = process.env.GOOGLE_CLIENT_ID
+            if (!clientId) {
+                console.error('[/api/auth/oauth] GOOGLE_CLIENT_ID env var is missing')
+                return NextResponse.redirect(
+                    `${siteUrl}/login?error=${encodeURIComponent('Google login is not configured. Please contact support.')}`
+                )
             }
+
+            // Generate nonce for security (Supabase signInWithIdToken verifies this)
+            const rawNonce = randomBytes(16).toString('base64url')
+            const hashedNonce = createHash('sha256').update(rawNonce).digest('hex')
+
+            // Generate state for CSRF protection
+            const state = randomBytes(16).toString('base64url')
+
+            const params = new URLSearchParams({
+                client_id: clientId,
+                redirect_uri: `${siteUrl}/api/auth/callback/google`,
+                response_type: 'code',
+                scope: 'openid email profile',
+                access_type: 'offline',
+                prompt: 'consent',
+                nonce: hashedNonce,
+                state: state,
+            })
+
+            const response = NextResponse.redirect(
+                `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+            )
+
+            // Store raw nonce and state in httpOnly cookies for verification in callback
+            const cookieOptions = {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'lax' as const,
+                maxAge: 600, // 10 minutes
+                path: '/',
+            }
+
+            response.cookies.set('google_oauth_nonce', rawNonce, cookieOptions)
+            response.cookies.set('google_oauth_state', state, cookieOptions)
+
+            return response
+        }
+
+        // ── Twitter/X ───────────────────────────────────────────────────────────
+        if (provider === 'twitter') {
+            // Twitter OAuth requires browser to visit supabase.co for callback,
+            // which ISP blocks. Until direct Twitter OAuth is implemented,
+            // redirect with a clear error message.
+            return NextResponse.redirect(
+                `${siteUrl}/login?error=${encodeURIComponent('X/Twitter login is temporarily unavailable due to network restrictions. Please use Google or email/password to log in.')}`
+            )
+        }
+
+        return NextResponse.redirect(
+            `${siteUrl}/login?error=${encodeURIComponent('Invalid login provider.')}`
         )
-
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider,
-            options: {
-                redirectTo: `${siteUrl}/auth/callback`,
-                skipBrowserRedirect: true, // We handle the redirect ourselves
-            },
-        })
-
-        if (error) {
-            console.error('[/api/auth/oauth] signInWithOAuth error:', error)
-            return NextResponse.json(
-                { ok: false, error: error.message },
-                { status: 400 }
-            )
-        }
-
-        if (!data?.url) {
-            return NextResponse.json(
-                { ok: false, error: 'Failed to generate OAuth URL.' },
-                { status: 500 }
-            )
-        }
-
-        // REDIRECT instead of returning JSON — this carries the PKCE cookies!
-        const response = NextResponse.redirect(data.url, { status: 302 })
-
-        cookiesToReturn.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
-        })
-
-        return response
     } catch (err) {
         console.error('[/api/auth/oauth] Unexpected error:', err)
-        return NextResponse.json(
-            { ok: false, error: 'An unexpected error occurred. Please try again.' },
-            { status: 500 }
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+        return NextResponse.redirect(
+            `${siteUrl}/login?error=${encodeURIComponent('An unexpected error occurred. Please try again.')}`
         )
     }
 }
