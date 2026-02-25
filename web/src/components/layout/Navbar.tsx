@@ -1,15 +1,33 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Heart, TrendingUp, Plus, User, LogOut, Sun, Moon, Menu, X, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+/**
+ * NAVBAR — Fully server-proxied auth state.
+ *
+ * CRITICAL: NO direct browser→Supabase calls.
+ * All auth state is fetched from /api/auth/me (server-side).
+ * This bypasses ISP-level blocking of *.supabase.co domains.
+ */
+
+type UserData = {
+    id: string
+    email: string
+} | null
+
+type ProfileData = {
+    username: string | null
+    role: string | null
+    is_suspended: boolean | null
+} | null
+
 export function Navbar() {
-    const [user, setUser] = useState<any>(null)
-    const [profile, setProfile] = useState<any>(null)
+    const [user, setUser] = useState<UserData>(null)
+    const [profile, setProfile] = useState<ProfileData>(null)
     const [theme, setTheme] = useState<'dark' | 'light'>('dark')
     const [mobileOpen, setMobileOpen] = useState(false)
     const [loading, setLoading] = useState(true)
@@ -31,39 +49,35 @@ export function Navbar() {
         document.documentElement.classList.toggle('dark', next === 'dark')
     }
 
-    // Fetch auth state
-    useEffect(() => {
-        const supabase = createClient()
-
-        const fetchUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            setUser(user)
-
-            if (user) {
-                const { data: prof } = await supabase
-                    .from('profiles')
-                    .select('username, role')
-                    .eq('id', user.id)
-                    .single()
-                setProfile(prof)
+    // Fetch auth state from server-side API (bypasses ISP block)
+    const fetchAuthState = useCallback(async () => {
+        try {
+            const res = await fetch('/api/auth/me', {
+                // Include cookies for session
+                credentials: 'same-origin',
+            })
+            if (!res.ok) {
+                setUser(null)
+                setProfile(null)
+                return
             }
+            const data = await res.json()
+            setUser(data.user || null)
+            setProfile(data.profile || null)
+        } catch {
+            // Network error — treat as unauthenticated
+            setUser(null)
+            setProfile(null)
+        } finally {
             setLoading(false)
         }
-
-        fetchUser()
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            setUser(session?.user ?? null)
-            if (!session?.user) {
-                setProfile(null)
-                setLoading(false)
-            } else {
-                fetchUser()
-            }
-        })
-
-        return () => subscription.unsubscribe()
     }, [])
+
+    // Fetch auth state on mount and whenever pathname changes
+    // (login/signup pages do router.refresh() after success)
+    useEffect(() => {
+        fetchAuthState()
+    }, [fetchAuthState, pathname])
 
     const handleSignOut = async () => {
         try {
