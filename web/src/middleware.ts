@@ -88,13 +88,31 @@ export async function middleware(request: NextRequest) {
                     )
                 },
             },
+            auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false,
+            },
         }
     )
 
     // IMPORTANT: DO NOT remove this line. It refreshes the auth token.
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    // Wrapped in a race with a 5s timeout so ISP-level blocks don't hang the page.
+    let user = null;
+    try {
+        const getUserWithTimeout = Promise.race([
+            supabase.auth.getUser(),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Supabase getUser timeout')), 5000)
+            ),
+        ]) as Promise<{ data: { user: import('@supabase/supabase-js').User | null } }>
+
+        const { data } = await getUserWithTimeout
+        user = data?.user || null;
+    } catch (e) {
+        console.error('[middleware] Supabase getUser failed (network/timeout):', (e as Error).message);
+        // Fail gracefully — treat as unauthenticated
+    }
 
     // ─────────────────────────────────────────────
     // 0. GLOBAL USERNAME ENFORCEMENT
@@ -102,13 +120,31 @@ export async function middleware(request: NextRequest) {
     let profile = null
 
     if (user) {
-        const { data } = await supabase
-            .from('profiles')
-            .select('username, role, is_suspended, suspended_until, suspension_reason')
-            .eq('id', user.id)
-            .single()
+        try {
+            type ProfileData = {
+                username: string | null
+                role: string | null
+                is_suspended: boolean | null
+                suspended_until: string | null
+                suspension_reason: string | null
+            }
+            const profileFetchWithTimeout = Promise.race([
+                supabase
+                    .from('profiles')
+                    .select('username, role, is_suspended, suspended_until, suspension_reason')
+                    .eq('id', user.id)
+                    .single(),
+                new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+                ),
+            ]) as Promise<{ data: ProfileData | null }>
 
-        profile = data
+            const { data } = await profileFetchWithTimeout
+            profile = data
+        } catch (e) {
+            console.error('[middleware] Profile fetch failed (network/timeout):', (e as Error).message);
+            // Fail gracefully — skip profile-based guards
+        }
 
         if (profile) {
             // Because our Supabase DB trigger auto-generates a username fallback

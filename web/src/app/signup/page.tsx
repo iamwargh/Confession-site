@@ -13,7 +13,6 @@
  */
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { Heart, Eye, EyeOff, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -64,8 +63,6 @@ export default function SignupPage() {
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
-
     // Validation
     const usernameValid = username.length >= 3 && username.length <= 20 && /^[a-zA-Z0-9_]+$/.test(username)
     const passwordStrong = password.length >= 8
@@ -73,36 +70,18 @@ export default function SignupPage() {
 
     // ── OAuth handlers ────────────────────────────────────────────────────────
 
-    async function handleGoogleSignup() {
+    function handleGoogleSignup() {
         setError('')
         setGoogleLoading(true)
-        const supabase = createClient()
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: `${siteUrl}/auth/callback`,
-            },
-        })
-        if (error) {
-            setError(error.message)
-            setGoogleLoading(false)
-        }
+        // Navigate directly — the API route returns a 302 redirect with PKCE cookies
+        window.location.href = '/api/auth/oauth?provider=google'
     }
 
-    async function handleXSignup() {
+    function handleXSignup() {
         setError('')
         setXLoading(true)
-        const supabase = createClient()
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'twitter',
-            options: {
-                redirectTo: `${siteUrl}/auth/callback`,
-            },
-        })
-        if (error) {
-            setError(error.message)
-            setXLoading(false)
-        }
+        // Navigate directly — the API route returns a 302 redirect with PKCE cookies
+        window.location.href = '/api/auth/oauth?provider=twitter'
     }
 
     // ── Email/password signup ─────────────────────────────────────────────────
@@ -112,7 +91,7 @@ export default function SignupPage() {
         setError('')
         setLoading(true)
 
-        // Basic front-end validation
+        // Basic front-end validation (same checks done server-side too)
         if (!emailValid) {
             setError('Please enter a valid email address.')
             setLoading(false); return
@@ -126,67 +105,33 @@ export default function SignupPage() {
             setLoading(false); return
         }
 
-        const supabase = createClient()
+        try {
+            // Server-side call — bypasses ISP block on *.supabase.co
+            const res = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email.trim(),
+                    password,
+                    username: username.toLowerCase().trim(),
+                }),
+            })
 
-        // 1. Check username uniqueness directly in public.profiles
-        const { data: existing, error: checkError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('username', username.toLowerCase().trim())
-            .maybeSingle()
+            const json = await res.json()
 
-        if (checkError) {
-            console.error('[signup] Username check failed:', checkError)
-            // We continue as the signUp call will also be caught by DB triggers/constraints
-        }
-
-        if (existing) {
-            setError('This username is already taken. Please choose another.')
-            setLoading(false); return
-        }
-
-        /**
-         * 2. SUPABASE AUTH SIGNUP
-         * Passing username in 'data' is the correct way to map to raw_user_meta_data.
-         * Our DB trigger handle_new_user() uses this to create the profile.
-         */
-        const { error: signupError } = await supabase.auth.signUp({
-            email: email.trim(),
-            password,
-            options: {
-                // Correct way to pass metadata. Maps to NEW.raw_user_meta_data in trigger.
-                data: { username: username.toLowerCase().trim() },
-                emailRedirectTo: `${siteUrl}/auth/callback`,
-            },
-        })
-
-        if (signupError) {
-            console.error('[signup] signUp error:', signupError)
-
-            // Map common Supabase Auth/DB errors to user-friendly messages
-            if (signupError.message.includes('already registered')) {
-                setError('An account with this email already exists. Try logging in.')
-            } else if (
-                signupError.message.includes('Database error saving new user') ||
-                signupError.message.includes('Database error updating user')
-            ) {
-                // These errors often mean the trigger failed (e.g. username unique constraint)
-                setError('This username is likely taken or there was a temporary database issue. Please try another.')
-            } else {
-                setError(signupError.message)
+            if (!json.ok) {
+                setError(json.error || 'Signup failed. Please try again.')
+                setLoading(false)
+                return
             }
 
+            // Success — show email verification screen
+            setSuccess(true)
             setLoading(false)
-            return
+        } catch {
+            setError('Network error. Please check your connection and try again.')
+            setLoading(false)
         }
-
-        /**
-         * NOTE: No extra updateUser() call here. 
-         * The profile is created automatically and atomically via the DB trigger.
-         */
-
-        setSuccess(true)
-        setLoading(false)
     }
 
     // ── Success screen ────────────────────────────────────────────────────────

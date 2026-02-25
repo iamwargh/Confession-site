@@ -29,6 +29,11 @@ export async function GET(request: NextRequest) {
                     getAll: () => request.cookies.getAll(),
                     setAll: () => { },
                 },
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false,
+                },
             }
         )
 

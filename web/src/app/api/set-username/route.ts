@@ -35,10 +35,24 @@ export async function POST(request: NextRequest) {
                         )
                     },
                 },
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false,
+                },
             }
         )
 
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        let user = null;
+        let userError = null;
+        try {
+            const { data, error } = await supabase.auth.getUser()
+            user = data?.user || null;
+            userError = error;
+        } catch (e) {
+            console.error('[set-username] Supabase getUser timeout:', e);
+            userError = e;
+        }
 
         if (userError || !user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -63,6 +63,11 @@ export async function GET(request: NextRequest) {
                             })
                         },
                     },
+                    auth: {
+                        persistSession: false,
+                        autoRefreshToken: false,
+                        detectSessionInUrl: false,
+                    },
                 }
             )
 
@@ -104,6 +109,11 @@ export async function GET(request: NextRequest) {
                                 response.cookies.set(name, value, options)
                             })
                         },
+                    },
+                    auth: {
+                        persistSession: false,
+                        autoRefreshToken: false,
+                        detectSessionInUrl: false,
                     },
                 }
             )

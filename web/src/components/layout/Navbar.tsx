@@ -66,11 +66,15 @@ export function Navbar() {
     }, [])
 
     const handleSignOut = async () => {
-        const supabase = createClient()
-        await supabase.auth.signOut()
+        try {
+            // Use server-side signout to avoid ISP blocking *.supabase.co
+            await fetch('/api/auth/signout', { method: 'POST' })
+        } catch {
+            // Even if the network call fails, clear local state
+        }
         setUser(null)
         setProfile(null)
-        router.push('/')
+        router.push('/login')
         router.refresh()
     }
 

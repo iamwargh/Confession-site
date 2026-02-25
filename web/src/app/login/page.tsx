@@ -6,7 +6,6 @@
  */
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Heart, Eye, EyeOff, Loader2, XCircle } from 'lucide-react'
@@ -106,41 +105,21 @@ function LoginForm() {
     const redirectTo = searchParams.get('redirect') || '/'
     const [error, setError] = useState(searchParams.get('error') || '')
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
-
     // ── OAuth handlers ────────────────────────────────────────────────────────
 
-    async function handleGoogleLogin() {
+    function handleGoogleLogin() {
         setError('')
         setGoogleLoading(true)
-        const supabase = createClient()
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: `${siteUrl}/auth/callback`,
-            },
-        })
-        if (error) {
-            setError(error.message)
-            setGoogleLoading(false)
-        }
-        // On success, browser redirects — no need to reset loading
+        // Navigate directly — the API route returns a 302 redirect
+        // which carries the PKCE code_verifier cookie
+        window.location.href = '/api/auth/oauth?provider=google'
     }
 
-    async function handleXLogin() {
+    function handleXLogin() {
         setError('')
         setXLoading(true)
-        const supabase = createClient()
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'twitter',
-            options: {
-                redirectTo: `${siteUrl}/auth/callback`,
-            },
-        })
-        if (error) {
-            setError(error.message)
-            setXLoading(false)
-        }
+        // Navigate directly — the API route returns a 302 redirect
+        window.location.href = '/api/auth/oauth?provider=twitter'
     }
 
     // ── Email/password handler ─────────────────────────────────────────────────
@@ -150,54 +129,29 @@ function LoginForm() {
         setError('')
         setLoading(true)
 
-        const supabase = createClient()
+        try {
+            // Server-side call — bypasses ISP block on *.supabase.co
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email.trim(), password }),
+            })
 
-        const { data, error: loginError } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password,
-        })
+            const json = await res.json()
 
-        if (loginError) {
-            if (loginError.message.includes('Email not confirmed')) {
-                setError('Please verify your email before logging in. Check your inbox.')
-            } else if (loginError.message.includes('Invalid login credentials')) {
-                setError('Wrong email or password. Please try again.')
-            } else {
-                setError(loginError.message)
+            if (!json.ok) {
+                setError(json.error || 'Login failed. Please try again.')
+                setLoading(false)
+                return
             }
+
+            // Success — session cookie is already set by the server
+            router.push(redirectTo)
+            router.refresh()
+        } catch {
+            setError('Network error. Please check your connection and try again.')
             setLoading(false)
-            return
         }
-
-        // Check if user is suspended
-        if (data.user) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('is_suspended, suspended_until, suspension_reason')
-                .eq('id', data.user.id)
-                .single()
-
-            if (profile?.is_suspended) {
-                // Check if suspension has expired
-                if (profile.suspended_until && new Date(profile.suspended_until) < new Date()) {
-                    // Suspension expired - auto-unsuspend via RPC
-                    await supabase.rpc('check_suspension_expired', { user_uuid: data.user.id })
-                    // Allow login to continue
-                } else {
-                    // Still suspended
-                    await supabase.auth.signOut()
-                    const until = profile.suspended_until
-                        ? ` until ${new Date(profile.suspended_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`
-                        : ' permanently'
-                    setError(`Your account has been suspended${until}. Reason: ${profile.suspension_reason || 'Violation of terms.'}`)
-                    setLoading(false)
-                    return
-                }
-            }
-        }
-
-        router.push(redirectTo)
-        router.refresh()
     }
 
     const anyLoading = loading || googleLoading || xLoading
