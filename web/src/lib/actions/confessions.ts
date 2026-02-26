@@ -8,7 +8,7 @@
  * - createConfession: post a confession (rate-limited, filtered, validated)
  * - toggleLike: like/unlike with optimistic UI support
  * - reportConfession: report with reason
- * - deleteOwnConfession: user deletes their own post
+ * - deleteConfession: user deletes their own post or admin deletes any post
  */
 
 import { createClient } from '@/lib/supabase/server'
@@ -263,16 +263,25 @@ export async function reportConfession(
 
 
 // ============================================================
-// AI-18: DELETE OWN CONFESSION
+// AI-18: DELETE CONFESSION (Owner or Admin)
 // ============================================================
 
-export async function deleteOwnConfession(confessionId: string): Promise<ActionResult> {
+export async function deleteConfession(confessionId: string): Promise<ActionResult> {
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated.' }
 
-    // Verify ownership
+    // Fetch user profile to check role
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin'
+
+    // Verify target confession
     const { data: confession } = await supabase
         .from('confessions')
         .select('user_id')
@@ -281,21 +290,53 @@ export async function deleteOwnConfession(confessionId: string): Promise<ActionR
 
     if (!confession) return { success: false, error: 'Confession not found.' }
 
-    if (confession.user_id !== user.id) {
-        return { success: false, error: 'You can only delete your own confessions.' }
+    // Enforce permission: Must be owner OR admin
+    if (confession.user_id !== user.id && !isAdmin) {
+        return { success: false, error: 'You do not have permission to delete this confession.' }
     }
 
-    // Soft delete
-    const { error } = await supabase
-        .from('confessions')
-        .update({ is_deleted: true })
-        .eq('id', confessionId)
-        .eq('user_id', user.id)
+    // Prepare soft delete query
+    // Use admin client if admin to reliably bypass any RLS complexities
+    const dbClient = isAdmin ? createAdminClient() : supabase
 
-    if (error) return { success: false, error: 'Failed to delete confession.' }
+    const { data: updated, error } = await dbClient
+        .from('confessions')
+        .update({
+            is_deleted: true,
+            deleted_by: user.id,
+            deleted_at: new Date().toISOString()
+        })
+        .eq('id', confessionId)
+        .select('id')
+
+    if (error) {
+        console.error('Delete error details:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+        })
+        return { success: false, error: `Database error while deleting: ${error.message}` }
+    }
+
+    if (!updated || updated.length === 0) {
+        return { success: false, error: 'Failed to delete. Confession may not exist or permission denied.' }
+    }
+
+    if (isAdmin && confession.user_id !== user.id) {
+        await createAdminClient().from('admin_actions').insert({
+            admin_id: user.id,
+            action_type: 'delete_post',
+            target_confession_id: confessionId,
+            notes: 'Deleted via admin permission',
+        })
+    }
 
     revalidatePath('/')
     revalidatePath('/my-confessions')
+    revalidatePath('/trending')
+    revalidatePath('/superadmin/activity')
+    revalidatePath('/superadmin/posts')
 
     return { success: true }
 }

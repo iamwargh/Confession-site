@@ -26,7 +26,7 @@ export default async function HomePage() {
   // Fetch first page of confessions
   const { data: confessions, error } = await supabase
     .from('confessions')
-    .select('id, content, likes_count, created_at')
+    .select('id, content, likes_count, comments_count, created_at')
     .eq('is_deleted', false)
     .order('created_at', { ascending: false })
     .limit(PAGE_SIZE)

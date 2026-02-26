@@ -15,6 +15,7 @@ interface Confession {
     id: string
     content: string
     likes_count: number
+    comments_count: number
     created_at: string
 }
 
@@ -46,7 +47,7 @@ export function HomeFeedClient({ initialConfessions, userLikes, userReports, isL
 
         const { data: newConfessions } = await supabase
             .from('confessions')
-            .select('id, content, likes_count, created_at')
+            .select('id, content, likes_count, comments_count, created_at')
             .eq('is_deleted', false)
             .order('created_at', { ascending: false })
             .range(from, to)
@@ -158,6 +159,7 @@ export function HomeFeedClient({ initialConfessions, userLikes, userReports, isL
                                 id={confession.id}
                                 content={confession.content}
                                 likesCount={confession.likes_count}
+                                commentsCount={confession.comments_count}
                                 createdAt={confession.created_at}
                                 currentUserLiked={likedIds.has(confession.id)}
                                 reportedByUser={reportedIds.has(confession.id)}

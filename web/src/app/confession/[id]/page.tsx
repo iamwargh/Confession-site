@@ -3,6 +3,7 @@
  */
 import { createClient } from '@/lib/supabase/server'
 import { ConfessionCard } from '@/components/feed/ConfessionCard'
+import { CommentSection } from '@/components/feed/CommentSection'
 import { MentalHealthBannerWrapper } from './mental-health-banner'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -39,7 +40,7 @@ export default async function ConfessionDetailPage({ params }: Props) {
 
     const { data: confession } = await supabase
         .from('confessions')
-        .select('id, content, likes_count, created_at, user_id')
+        .select('id, content, likes_count, comments_count, created_at, user_id')
         .eq('id', id)
         .eq('is_deleted', false)
         .single()
@@ -95,6 +96,7 @@ export default async function ConfessionDetailPage({ params }: Props) {
                     id={confession.id}
                     content={confession.content}
                     likesCount={confession.likes_count}
+                    commentsCount={confession.comments_count}
                     createdAt={confession.created_at}
                     currentUserLiked={currentUserLiked}
                     reportedByUser={reportedByUser}
@@ -105,10 +107,7 @@ export default async function ConfessionDetailPage({ params }: Props) {
                 {/* Mental health support banner for reader */}
                 <MentalHealthBannerWrapper content={confession.content} />
 
-                <div className="rounded-xl border border-border/40 bg-card/50 p-6">
-                    <h3 className="text-base font-semibold mb-2">Comments</h3>
-                    <p className="text-sm text-muted-foreground">Comments are coming soon. 💬</p>
-                </div>
+                <CommentSection confessionId={id} isLoggedIn={!!user} />
             </div>
         </div>
     )

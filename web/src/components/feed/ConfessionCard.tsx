@@ -7,14 +7,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Heart, Flag, Trash2, Clock } from 'lucide-react'
-import { toggleLike, deleteOwnConfession, reportConfession, type ReportReason } from '@/lib/actions/confessions'
+import { Heart, Flag, Trash2, Clock, MessageCircle } from 'lucide-react'
+import { toggleLike, deleteConfession, reportConfession, type ReportReason } from '@/lib/actions/confessions'
 import { cn } from '@/lib/utils'
 
 interface ConfessionCardProps {
     id: string
     content: string
     likesCount: number
+    commentsCount?: number
     createdAt: string
     isOwner?: boolean
     isAdmin?: boolean
@@ -47,6 +48,7 @@ export function ConfessionCard({
     id,
     content,
     likesCount,
+    commentsCount = 0,
     createdAt,
     isOwner,
     isAdmin,
@@ -110,9 +112,11 @@ export function ConfessionCard({
     async function handleDelete() {
         if (!confirm('Delete this confession? This cannot be undone.')) return
         setDeleteLoading(true)
-        const result = await deleteOwnConfession(id)
+        const result = await deleteConfession(id)
         if (result.success) {
             setDeleted(true)
+        } else {
+            alert(result.error || 'Failed to delete confession')
         }
         setDeleteLoading(false)
     }
@@ -177,6 +181,16 @@ export function ConfessionCard({
                         />
                         <span>{likeCount}</span>
                     </button>
+
+                    {/* Comments */}
+                    <Link
+                        href={`/confession/${id}#comments`}
+                        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-all duration-150 group/comment hover:text-primary"
+                        aria-label="Comments"
+                    >
+                        <MessageCircle className="h-4 w-4 transition-transform group-hover/comment:scale-110" />
+                        <span>{commentsCount}</span>
+                    </Link>
 
                     {/* Report */}
                     <button
@@ -259,8 +273,8 @@ export function ConfessionCard({
 }
 
 // Legacy support for old prop shape
-export function ConfessionCardLegacy({ id, content, likes, createdAt, isOwner, isAdmin }: {
-    id: string; content: string; likes: number; createdAt: string; isOwner?: boolean; isAdmin?: boolean
+export function ConfessionCardLegacy({ id, content, likes, commentsCount = 0, createdAt, isOwner, isAdmin }: {
+    id: string; content: string; likes: number; commentsCount?: number; createdAt: string; isOwner?: boolean; isAdmin?: boolean
 }) {
-    return <ConfessionCard id={id} content={content} likesCount={likes} createdAt={createdAt} isOwner={isOwner} isAdmin={isAdmin} />
+    return <ConfessionCard id={id} content={content} likesCount={likes} commentsCount={commentsCount} createdAt={createdAt} isOwner={isOwner} isAdmin={isAdmin} />
 }

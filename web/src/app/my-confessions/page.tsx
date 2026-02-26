@@ -24,7 +24,7 @@ export default async function MyConfessionsPage() {
 
     const { data: confessions } = await supabase
         .from('confessions')
-        .select('id, content, likes_count, created_at')
+        .select('id, content, likes_count, comments_count, created_at')
         .eq('user_id', user.id)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -73,6 +73,7 @@ export default async function MyConfessionsPage() {
                                 id={c.id}
                                 content={c.content}
                                 likesCount={c.likes_count}
+                                commentsCount={c.comments_count}
                                 createdAt={c.created_at}
                                 isOwner={true}
                             />

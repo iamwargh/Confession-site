@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Trash2, Search, ShieldAlert, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { deleteConfession } from '@/lib/actions/confessions'
 
 interface Post {
     id: string
@@ -55,22 +56,12 @@ export function SuperAdminPostsClient({ posts: initialPosts, totalCount, current
     async function handleDelete(postId: string) {
         if (!confirm('Delete this confession permanently? This cannot be undone.')) return
         setDeletingId(postId)
-        const supabase = createClient()
 
-        const { error } = await supabase
-            .from('confessions')
-            .update({ is_deleted: true, deleted_by: adminId })
-            .eq('id', postId)
-
-        if (!error) {
-            // Log
-            await supabase.from('admin_actions').insert({
-                admin_id: adminId,
-                action_type: 'delete_post',
-                target_confession_id: postId,
-                notes: 'Deleted via Super Admin posts panel',
-            })
+        const result = await deleteConfession(postId)
+        if (result.success) {
             setPosts(prev => prev.filter(p => p.id !== postId))
+        } else {
+            alert(result.error || 'Failed to delete confession')
         }
         setDeletingId(null)
     }

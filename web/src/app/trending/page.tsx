@@ -23,7 +23,7 @@ export default async function TrendingPage() {
 
     const { data: confessions } = await supabase
         .from('confessions')
-        .select('id, content, likes_count, created_at')
+        .select('id, content, likes_count, comments_count, created_at')
         .eq('is_deleted', false)
         .gte('created_at', sevenDaysAgo)
         .order('likes_count', { ascending: false })
@@ -80,6 +80,7 @@ export default async function TrendingPage() {
                                     id={c.id}
                                     content={c.content}
                                     likesCount={c.likes_count}
+                                    commentsCount={c.comments_count}
                                     createdAt={c.created_at}
                                     currentUserLiked={userLikes.includes(c.id)}
                                     reportedByUser={userReports.includes(c.id)}
