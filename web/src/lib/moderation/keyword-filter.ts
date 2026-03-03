@@ -54,6 +54,25 @@ const BLOCKED_WORDS: string[] = [
 ]
 
 // ================================================================
+// ADULT / 18+ TRIGGER WORDS
+// ================================================================
+export const ADULT_KEYWORDS: string[] = [
+    'sex',
+    'dick',
+    'pussy',
+    'porn',
+    'horny',
+    'fuck',
+    'nsfw',
+    'cock',
+    'boob',
+    'tits',
+    'slut',
+    'whore',
+    'naughty'
+]
+
+// ================================================================
 // MENTAL HEALTH TRIGGER WORDS — these DON'T block the post
 // but trigger a helpline warning banner.
 // (Used by the mental health warning system - AI-21)
@@ -156,6 +175,8 @@ export interface FilterResult {
     matchedWord?: string
     hasMentalHealthKeywords: boolean
     mentalHealthKeywordsFound: string[]
+    isAdult: boolean
+    adultKeywordsFound: string[]
 }
 
 /**
@@ -180,6 +201,8 @@ export function filterConfessionContent(content: string): FilterResult {
                 matchedWord: word, // For logging purposes (not shown to user)
                 hasMentalHealthKeywords: false,
                 mentalHealthKeywordsFound: [],
+                isAdult: false,
+                adultKeywordsFound: [],
             }
         }
     }
@@ -192,10 +215,20 @@ export function filterConfessionContent(content: string): FilterResult {
         }
     }
 
+    // ── Check adult keywords (redirects to 18+ section) ──
+    const adultKeywordsFound: string[] = []
+    for (const keyword of ADULT_KEYWORDS) {
+        if (originalLower.includes(keyword.toLowerCase())) {
+            adultKeywordsFound.push(keyword)
+        }
+    }
+
     return {
         blocked: false,
         hasMentalHealthKeywords: mentalHealthKeywordsFound.length > 0,
         mentalHealthKeywordsFound,
+        isAdult: adultKeywordsFound.length > 0,
+        adultKeywordsFound,
     }
 }
 

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Heart, TrendingUp, Plus, User, LogOut, Sun, Moon, Menu, X, Shield } from 'lucide-react'
+import { Heart, TrendingUp, Plus, User, LogOut, Sun, Moon, Menu, X, Shield, Flame } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -98,6 +98,7 @@ export function Navbar() {
     const navLinks = [
         { href: '/', label: 'Home' },
         { href: '/trending', label: 'Trending', icon: TrendingUp },
+        { href: '/18-plus', label: '18+', icon: Flame },
     ]
 
     return (

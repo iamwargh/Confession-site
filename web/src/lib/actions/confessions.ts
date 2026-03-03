@@ -106,6 +106,7 @@ export async function createConfession(content: string): Promise<ActionResult> {
             content: trimmedContent,
             likes_count: 0,
             is_deleted: false,
+            is_adult: filterResult.isAdult,
         })
         .select('id')
 
@@ -130,12 +131,14 @@ export async function createConfession(content: string): Promise<ActionResult> {
 
     revalidatePath('/')
     revalidatePath('/my-confessions')
+    revalidatePath('/18-plus')
 
     return {
         success: true,
         data: {
             showMentalHealthBanner: filterResult.hasMentalHealthKeywords,
-            mentalHealthKeywordsFound: filterResult.mentalHealthKeywordsFound
+            mentalHealthKeywordsFound: filterResult.mentalHealthKeywordsFound,
+            isAdult: filterResult.isAdult
         }
     }
 }

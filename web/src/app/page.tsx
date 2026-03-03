@@ -28,6 +28,7 @@ export default async function HomePage() {
     .from('confessions')
     .select('id, content, likes_count, comments_count, created_at')
     .eq('is_deleted', false)
+    .eq('is_adult', false)
     .order('created_at', { ascending: false })
     .limit(PAGE_SIZE)
 

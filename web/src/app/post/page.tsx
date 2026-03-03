@@ -25,6 +25,7 @@ export default function PostConfessionPage() {
     const [success, setSuccess] = useState(false)
     const [showMentalHealthBanner, setShowMentalHealthBanner] = useState(false)
     const [detectedKeywords, setDetectedKeywords] = useState<string[]>([])
+    const [isAdultPost, setIsAdultPost] = useState(false)
 
     const remaining = MAX_CHARS - content.length
     const isValid = content.trim().length >= MIN_CHARS && content.length <= MAX_CHARS
@@ -45,6 +46,10 @@ export default function PostConfessionPage() {
         if (result.data?.showMentalHealthBanner) {
             setShowMentalHealthBanner(true)
             setDetectedKeywords(result.data.mentalHealthKeywordsFound || [])
+        }
+
+        if (result.data?.isAdult) {
+            setIsAdultPost(true)
         }
 
         setSuccess(true)
@@ -70,15 +75,16 @@ export default function PostConfessionPage() {
                     <h1 className="text-2xl font-bold">Confession posted!</h1>
                     <p className="text-muted-foreground">
                         Your truth has been shared anonymously.
+                        {isAdultPost && <><br /><span className="text-rose-500 font-medium mt-1 inline-block">It was automatically categorized as 18+ content.</span></>}
                     </p>
                     <div className="flex gap-3 justify-center">
                         <button
-                            onClick={() => { setSuccess(false); setContent(''); setShowMentalHealthBanner(false); }}
+                            onClick={() => { setSuccess(false); setContent(''); setShowMentalHealthBanner(false); setIsAdultPost(false); }}
                             className="h-9 px-4 rounded-md border border-border text-sm font-medium hover:bg-accent transition-colors"
                         >
                             Post another
                         </button>
-                        <Link href="/" className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center">
+                        <Link href={isAdultPost ? "/18-plus" : "/"} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center">
                             View Feed
                         </Link>
                     </div>

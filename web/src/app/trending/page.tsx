@@ -25,6 +25,7 @@ export default async function TrendingPage() {
         .from('confessions')
         .select('id, content, likes_count, comments_count, created_at')
         .eq('is_deleted', false)
+        .eq('is_adult', false)
         .gte('created_at', sevenDaysAgo)
         .order('likes_count', { ascending: false })
         .limit(20)

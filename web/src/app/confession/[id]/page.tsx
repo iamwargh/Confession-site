@@ -9,6 +9,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
+import { AdultGateClient } from './adult-gate-client'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +42,7 @@ export default async function ConfessionDetailPage({ params }: Props) {
 
     const { data: confession } = await supabase
         .from('confessions')
-        .select('id, content, likes_count, comments_count, created_at, user_id')
+        .select('id, content, likes_count, comments_count, created_at, user_id, is_adult')
         .eq('id', id)
         .eq('is_deleted', false)
         .single()
@@ -49,6 +51,10 @@ export default async function ConfessionDetailPage({ params }: Props) {
 
     // Get current user
     const { data: { user } } = await supabase.auth.getUser()
+
+    if (confession.is_adult && !user) {
+        redirect(`/login?next=/confession/${id}`)
+    }
     let currentUserLiked = false
     let reportedByUser = false
     let isOwner = false
@@ -81,11 +87,11 @@ export default async function ConfessionDetailPage({ params }: Props) {
         reportedByUser = !!report
     }
 
-    return (
+    const contentNode = (
         <div className="min-h-screen py-8 px-4">
             <div className="max-w-2xl mx-auto space-y-6">
                 <Link
-                    href="/"
+                    href={confession.is_adult ? "/18-plus" : "/"}
                     className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                     <ArrowLeft className="h-4 w-4" />
@@ -111,4 +117,10 @@ export default async function ConfessionDetailPage({ params }: Props) {
             </div>
         </div>
     )
+
+    if (confession.is_adult) {
+        return <AdultGateClient>{contentNode}</AdultGateClient>
+    }
+
+    return contentNode
 }
