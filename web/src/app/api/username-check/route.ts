@@ -1,7 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
+    const clientIp = getClientIp(request.headers)
+    const rateLimit = checkRateLimit(`username-check:${clientIp}`, { intervalMs: 60 * 1000, maxRequests: 60 })
+    if (!rateLimit.allowed) {
+        return NextResponse.json({ available: false, error: 'Too many requests. Please slow down.' }, { status: 429 })
+    }
+
     const searchParams = request.nextUrl.searchParams
     const username = searchParams.get('username')
 
