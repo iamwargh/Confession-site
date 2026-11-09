@@ -29,3 +29,4 @@ npm run dev
 ```
 
 See [web/README.md](file:///c:/Users/Dell/Documents/dev/web%20dev/confession%20site/web/README.md) for full configuration, database schema setup, and deployment documentation.
+
